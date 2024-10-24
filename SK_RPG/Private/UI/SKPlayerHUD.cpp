@@ -1,21 +1,25 @@
 // Copyright (c) 2024. Sir Knight title is a property of Quantinum ltd. All rights reserved.
 
-
 #include "UI/SKPlayerHUD.h"
+#include "Blueprint/UserWidget.h"
 #include "Engine/Canvas.h"
 
 void ASKPlayerHUD::BeginPlay()
 {
     Super::BeginPlay();
-}
 
+    InventoryWidget = CreateWidget(GetWorld(), InventoryWidgetClass);
+    if (InventoryWidget)
+    {
+        InventoryWidget->AddToViewport();
+    }
+}
 
 void ASKPlayerHUD::DrawHUD()
 {
     Super::DrawHUD();
     DrawCrosshair();
 }
-
 
 void ASKPlayerHUD::DrawCrosshair()
 {
@@ -27,5 +31,3 @@ void ASKPlayerHUD::DrawCrosshair()
     DrawLine(ScreenCenter.Min, ScreenCenter.Max - 10, ScreenCenter.Min, ScreenCenter.Max + 10, FLinearColor::Blue,
              2.0f);
 }
-
-

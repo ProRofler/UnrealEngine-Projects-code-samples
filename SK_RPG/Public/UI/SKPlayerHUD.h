@@ -16,9 +16,14 @@ class SIRKNIGHT_API ASKPlayerHUD : public AHUD
   public:
     virtual void DrawHUD() override;
 
-  protected:
+    TObjectPtr<UUserWidget> GetInventoryWidget() { return InventoryWidget; }
 
+  protected:
     virtual void BeginPlay() override;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Widget classes")
+    TSubclassOf<UUserWidget> InventoryWidgetClass;
+    TObjectPtr<UUserWidget> InventoryWidget;
 
   private:
     void DrawCrosshair();

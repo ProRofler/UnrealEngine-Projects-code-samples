@@ -32,17 +32,18 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     bool GetWalkToggle() const { return bWalkToggle; }
     EActionType GetActionType() const { return ActionType; }
     EMovementType GetMovementType() const { return MovementType; }
+    const TObjectPtr<AActor> &GetInteractibleActive() const { return InteractibleActive; }
 
     // setters
     void SetActionType(const EActionType _ActionType) { ActionType = _ActionType; }
-
-  protected:
-    virtual void BeginPlay() override;
 
     // movement related
     void StartSprinting();
     void StartWalking();
     void StartRunning();
+
+  protected:
+    virtual void BeginPlay() override;
 
     // interactions
     UPROPERTY(BlueprintReadWrite)

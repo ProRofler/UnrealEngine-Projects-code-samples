@@ -3,11 +3,17 @@
 #include "Characters/SKPlayerCharacter.h"
 #include "Camera/CameraComponent.h"
 #include "Characters/Components/SKInventoryComponent.h"
+#include "Characters/Components/SKPhysicsHandleComponent.h"
 #include "Core/Interface/SKInterfaceInteractable.h"
+#include "Core/SKCoreTypes.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "PhysicsEngine/PhysicsHandleComponent.h"
+#include "Props/SKCollectible.h"
+#include "UI/SKPlayerHUD.h"
+#include "UI/Widgets/SKInventoryWidget.h"
 
 //********************* DEFAULT *********************
 ASKPlayerCharacter::ASKPlayerCharacter(const FObjectInitializer &ObjectInitializer) : Super(ObjectInitializer)
@@ -16,7 +22,7 @@ ASKPlayerCharacter::ASKPlayerCharacter(const FObjectInitializer &ObjectInitializ
     PlayerCamera->SetupAttachment(GetRootComponent());
     PlayerCamera->bUsePawnControlRotation = true;
 
-    PhysicsHandle = CreateDefaultSubobject<UPhysicsHandleComponent>("Physics handle");
+    PhysicsHandle = CreateDefaultSubobject<USKPhysicsHandleComponent>("Physics handle");
 }
 
 void ASKPlayerCharacter::Tick(float DeltaTime)
@@ -26,6 +32,12 @@ void ASKPlayerCharacter::Tick(float DeltaTime)
 #if !UE_BUILD_SHIPPING
     PrintDebugInfo();
 #endif
+}
+
+void ASKPlayerCharacter::BeginPlay()
+{
+    Super::BeginPlay();
+    InitializeComponents();
 }
 
 //********************* INPUT *********************
@@ -53,10 +65,10 @@ void ASKPlayerCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputC
 
 void ASKPlayerCharacter::ControllerSetup()
 {
-    if (APlayerController *PlayerController = Cast<APlayerController>(GetController()))
+    if (APlayerController *PC = Cast<APlayerController>(GetController()))
     {
         if (UEnhancedInputLocalPlayerSubsystem *Subsystem =
-                ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PlayerController->GetLocalPlayer()))
+                ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
         {
             Subsystem->ClearAllMappings();
             Subsystem->AddMappingContext(InputData.InputMapping, 0);
@@ -84,7 +96,7 @@ void ASKPlayerCharacter::LookingAction(const FInputActionValue &Value)
     }
     else
     {
-        RotateGrabbedComponent(Value.Get<FVector2D>());
+        PhysicsHandle->RotateGrabbedComponent(Value.Get<FVector2D>());
     }
 }
 
@@ -122,33 +134,6 @@ void ASKPlayerCharacter::GetLookedAtActor(TObjectPtr<AActor> &LookedAtActor) con
     }
 }
 
-void ASKPlayerCharacter::GrabItem()
-{
-    if (!InteractibleActive) return;
-
-    GrabbedComponent = InteractibleActive->FindComponentByClass<UMeshComponent>();
-    if (!GrabbedComponent)
-    {
-        return;
-    }
-
-    FVector GrabPivot;
-    FHitResult HitResult_pivot;
-
-    if (TraceFromCamera(HitResult_pivot, 250.0f) && HitResult_pivot.GetComponent() == GrabbedComponent)
-        GrabPivot = HitResult_pivot.ImpactPoint;
-    else
-        GrabPivot = GrabbedComponent->GetComponentLocation();
-
-    GrabbedComponent->SetUseCCD(true);
-
-    PhysicsHandle->GrabComponentAtLocationWithRotation(GrabbedComponent, NAME_None, GrabPivot, FRotator::ZeroRotator);
-
-    StartWalking();
-    SetActionType(EActionType::EGrabbing);
-    Async(EAsyncExecution::ThreadIfForkSafe, [&]() { UpdateGrabLocation(); });
-}
-
 void ASKPlayerCharacter::PrintDebugInfo() // DEBUG
 {
     // showing the amount of items in vicinity
@@ -162,14 +147,19 @@ void ASKPlayerCharacter::PrintDebugInfo() // DEBUG
 
     // Show if can interact in the moment
     if (InteractibleActive)
+    {
         GEngine->AddOnScreenDebugMessage(2, 0.0f, FColor::Emerald, "I'm looking at: " + InteractibleActive->GetName(),
                                          true);
+    }
 
-    // Current player state
-    FString CurrentActionType = UEnum::GetValueAsString(GetActionType());
-    FString CurrentMovementType = UEnum::GetValueAsString(GetMovementType());
-    GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
-                                     "Current states: " + CurrentMovementType + " | " + CurrentActionType, true);
+    // Current player state || This system will be replaced with GAS
+    if (GetWorld())
+    {
+        FString CurrentActionType = UEnum::GetValueAsString(GetActionType());
+        FString CurrentMovementType = UEnum::GetValueAsString(GetMovementType());
+        GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
+                                         "Current states: " + CurrentMovementType + " | " + CurrentActionType, true);
+    }
 
     // Inventory
     if (Inventory)
@@ -177,6 +167,75 @@ void ASKPlayerCharacter::PrintDebugInfo() // DEBUG
         GEngine->AddOnScreenDebugMessage(6, 0.0f, FColor::Cyan,
                                          "Items in inventory: " + FString::FromInt(Inventory->GetInventoryData().Num()),
                                          true);
+    }
+
+    // Draw XY arrows for physics handle
+    if (PhysicsHandle && PhysicsHandle->GrabbedComponent)
+    {
+        // Получаем текущее положение и ротацию Physics Handle
+        FVector HandleLocation;
+        FRotator HandleRotation;
+        PhysicsHandle->GetTargetLocationAndRotation(HandleLocation, HandleRotation);
+
+        // Длина стрелок
+        float ArrowLength = 30.0f;
+
+        // Стрелка по оси X (красная)
+        FVector XDirection = HandleRotation.RotateVector(FVector::ForwardVector) * ArrowLength;
+        FVector XArrowEnd = HandleLocation + XDirection;
+        DrawDebugDirectionalArrow(GetWorld(), HandleLocation, XArrowEnd,
+                                  25.0f,       // Длина "перышек" стрелы
+                                  FColor::Red, // Цвет для оси X
+                                  false,       // Постоянная отрисовка
+                                  -1.0f,       // Время жизни стрелы
+                                  0,           // Приоритет
+                                  2.0f         // Толщина стрелки
+        );
+
+        // Стрелка по оси Z (синяя)
+        FVector ZDirection = HandleRotation.RotateVector(FVector::UpVector) * ArrowLength;
+        FVector ZArrowEnd = HandleLocation + ZDirection;
+        DrawDebugDirectionalArrow(GetWorld(), HandleLocation, ZArrowEnd,
+                                  25.0f,        // Длина "перышек" стрелы
+                                  FColor::Blue, // Цвет для оси Z
+                                  false,        // Постоянная отрисовка
+                                  -1.0f,        // Время жизни стрелы
+                                  0,            // Приоритет
+                                  2.0f          // Толщина стрелки
+        );
+    }
+
+    // Interactible active rotation debug info
+    if (InteractibleActive)
+    {
+        // Получаем ротацию активного объекта
+        FRotator InteractibleRotation = InteractibleActive->GetActorRotation();
+
+        // Выводим ротацию активного объекта на экран
+        GEngine->AddOnScreenDebugMessage(
+            -1, // Уникальный ID сообщения, -1 означает, что сообщение исчезнет через время
+            0,  // Время отображения сообщения
+            FColor::Cyan, // Цвет текста
+            FString::Printf(TEXT("InteractibleActive Rotation: Pitch: %f, Yaw: %f, Roll: %f"),
+                            InteractibleRotation.Pitch, InteractibleRotation.Yaw, InteractibleRotation.Roll));
+    }
+
+    // Phys handle rotation debug info
+    if (PhysicsHandle)
+    {
+        // Получаем TargetRotation Physics Handle
+        FRotator PhysicsHandleTargetRotation;
+        FVector t;
+        PhysicsHandle->GetTargetLocationAndRotation(t, PhysicsHandleTargetRotation);
+
+        // Выводим TargetRotation Physics Handle на экран
+        GEngine->AddOnScreenDebugMessage(
+            -1, // Уникальный ID сообщения, -1 означает, что сообщение исчезнет через время
+            0,  // Время отображения сообщения
+            FColor::Green, // Цвет текста
+            FString::Printf(TEXT("PhysicsHandle Target Rotation: Pitch: %f, Yaw: %f, Roll: %f"),
+                            PhysicsHandleTargetRotation.Pitch, PhysicsHandleTargetRotation.Yaw,
+                            PhysicsHandleTargetRotation.Roll));
     }
 }
 
@@ -209,18 +268,26 @@ void ASKPlayerCharacter::Interact()
 {
     if (GetActionType() == EActionType::EGrabbing)
     {
-        ReleaseItem();
+        PhysicsHandle->ReleaseItem();
         SetActionType(EActionType::ENone);
     }
     else
     {
+
+        FInventoryItemData ItemData;
+        auto Item = Cast<ASKCollectible>(InteractibleActive);
+        if (!Item) return;
+        ItemData.Name = Item->GetInGameName();
+        PlayerInventoryWidget->AddToInventoryList(ItemData);
         ASKBaseCharacter::Interact();
     }
 }
 
 bool ASKPlayerCharacter::CanGrabItem()
 {
-    if (GetActionType() == EActionType::ENone && InteractibleActive)
+    if (!InteractibleActive) return false;
+
+    if (GetActionType() == EActionType::ENone && InteractibleActive->GetRootComponent()->IsSimulatingPhysics())
     {
         return true;
     }
@@ -230,80 +297,17 @@ bool ASKPlayerCharacter::CanGrabItem()
     }
 }
 
-void ASKPlayerCharacter::UpdateGrabLocation()
-{
-    UE_LOG(LogTemp, Display, TEXT("Started updating grab loc"));
-
-    while (GetActionType() == EActionType::EGrabbing || GetActionType() == EActionType::ERotating)
-    {
-        if (IsValid(GrabbedComponent) && IsValid(PhysicsHandle) && GetWorld())
-        {
-            FVector GrabLocation;
-            FHitResult HitResult_loc;
-
-            if (TraceFromCamera(HitResult_loc, GrabDistance, GrabbedComponent))
-                GrabLocation = HitResult_loc.ImpactPoint;
-            else
-                GrabLocation = HitResult_loc.TraceEnd;
-            PhysicsHandle->SetTargetLocation(GrabLocation);
-
-            if (GrabbedComponent && CheckDistanceToPlayer(GrabbedComponent->GetOwner()) >= 40000.0f)
-            {
-                Async(EAsyncExecution::TaskGraphMainThread, [&]() { HandleGrabbing(); });
-                return;
-            }
-        }
-        else
-        {
-            break;
-        }
-    }
-}
-
 void ASKPlayerCharacter::HandleGrabbing()
 {
-    if (GetActionType() == EActionType::EGrabbing || GetActionType() == EActionType::ERotating)
-    {
-        ReleaseItem();
-        return;
-    }
-    else if (!CanGrabItem())
-    {
-        return;
-    }
-    else
+    if (CanGrabItem())
     {
         SetActionType(EActionType::EGrabbing);
-        GrabItem();
+        PhysicsHandle->GrabItem();
     }
-}
-
-void ASKPlayerCharacter::ReleaseItem()
-{
-    PhysicsHandle->ReleaseComponent();
-    GrabbedComponent->SetUseCCD(false);
-    GrabbedComponent = nullptr;
-    SetActionType(EActionType::ENone);
-    StartRunning();
-}
-
-void ASKPlayerCharacter::RotateGrabbedComponent(const FVector2D &Input) const
-{
-    FVector HandleLoc;
-    FRotator HandleRot;
-    PhysicsHandle->GetTargetLocationAndRotation(HandleLoc, HandleRot);
-
-    HandleRot.Roll += Input.Y;
-    HandleRot.Yaw += Input.X;
-
-    PhysicsHandle->SetTargetRotation(HandleRot);
-}
-
-float ASKPlayerCharacter::CheckDistanceToPlayer(const TObjectPtr<AActor> OtherActor)
-{
-    const auto Distance = FVector::DistSquared(PlayerCamera->GetComponentLocation(), OtherActor->GetActorLocation());
-
-    return Distance;
+    else if (!CanGrabItem() && PhysicsHandle->GetItemToGrab())
+    {
+        PhysicsHandle->ReleaseItem();
+    }
 }
 
 void ASKPlayerCharacter::HandleAlternativeAction()
@@ -323,6 +327,18 @@ void ASKPlayerCharacter::HandleAlternativeAction()
 }
 
 //********************* UTILS *********************
+
+void ASKPlayerCharacter::InitializeComponents()
+{
+
+    PlayerController = UGameplayStatics::GetPlayerController(this, 0);
+    check(PlayerController.Get());
+    PlayerHUD = Cast<ASKPlayerHUD>(PlayerController->GetHUD());
+    check(PlayerHUD.Get());
+    PlayerInventoryWidget = Cast<USKInventoryWidget>(PlayerHUD->GetInventoryWidget());
+    check(PlayerInventoryWidget.Get());
+}
+
 FHitResult ASKPlayerCharacter::TraceToActor(const TObjectPtr<AActor> &OtherActor) const
 {
 

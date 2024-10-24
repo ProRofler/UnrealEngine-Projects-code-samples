@@ -7,8 +7,13 @@
 #include "CoreMinimal.h"
 #include "SKPlayerCharacter.generated.h"
 
-class UCameraComponent;
 struct FEnhancedInputData;
+
+class UCameraComponent;
+class APlayerController;
+class ASKPlayerHUD;
+class USKInventoryWidget;
+class USKPhysicsHandleComponent;
 
 UCLASS()
 class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
@@ -16,14 +21,21 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
     GENERATED_BODY()
 
   public:
+    friend USKPhysicsHandleComponent;
     ASKPlayerCharacter(const FObjectInitializer &ObjectInitializer);
     virtual void SetupPlayerInputComponent(class UInputComponent *PlayerInputComponent) override;
     virtual void Tick(float DeltaTime) override;
 
     UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Actor components")
-    TObjectPtr<UPhysicsHandleComponent> PhysicsHandle;
+    TObjectPtr<USKPhysicsHandleComponent> PhysicsHandle;
+
+    // ******** UTILS *****
+    bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance);
 
   protected:
+    // super
+    virtual void BeginPlay() override;
+
     // Player specific
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "_Player camera settings")
     TObjectPtr<UCameraComponent> PlayerCamera;
@@ -35,16 +47,18 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
     // interactions
     virtual void HandleInteractionActor() override;
     virtual void Interact() override;
-    void UpdateGrabLocation();
-    void RotateGrabbedComponent(const FVector2D& Input) const;
-    float CheckDistanceToPlayer(const TObjectPtr<AActor> OtherComponent);
-
-    TObjectPtr<UMeshComponent> GrabbedComponent;
 
     UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Interactions settings")
     float GrabDistance = 150.0f;
 
   private:
+    // player components
+    TWeakObjectPtr<APlayerController> PlayerController;
+    TWeakObjectPtr<ASKPlayerHUD> PlayerHUD;
+    TWeakObjectPtr<USKInventoryWidget> PlayerInventoryWidget;
+
+    void InitializeComponents();
+
     // input related
     void ControllerSetup();
     UFUNCTION()
@@ -54,14 +68,13 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
 
     // interactions
     void GetLookedAtActor(TObjectPtr<AActor> &LookedAtActor) const;
+    bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance,
+                         const TObjectPtr<UMeshComponent> ComponentToIgnore);
     FHitResult TraceToActor(const TObjectPtr<AActor> &OtherActor) const;
-    bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance);
-    bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance, const TObjectPtr<UMeshComponent> ComponentToIgnore);
 
+    // grabbing
     void HandleGrabbing();
     bool CanGrabItem();
-    void GrabItem();
-    void ReleaseItem();
 
     // debug
     void PrintDebugInfo();
