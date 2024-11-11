@@ -28,4 +28,6 @@ struct FEnhancedInputData
     UInputAction *InteractionAction = nullptr;
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interactions")
     UInputAction *InteractionActionHold = nullptr;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
+    UInputAction *InventoryToggleAction = nullptr;
 };

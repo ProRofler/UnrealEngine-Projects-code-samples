@@ -2,11 +2,10 @@
 
 #pragma once
 
+#include "Core/SKCoreTypes.h"
 #include "CoreMinimal.h"
 #include "UObject/NoExportTypes.h"
-#include "Core/SKCoreTypes.h"
 #include "SKInventoryObjectData.generated.h"
-
 
 UCLASS()
 class SIRKNIGHT_API USKInventoryObjectData : public UObject
@@ -15,5 +14,8 @@ class SIRKNIGHT_API USKInventoryObjectData : public UObject
 
   public:
     UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Data")
-    FInventoryItemData ItemData;
+    FInventoryItemData InventoryItemData;
+
+    UPROPERTY(BlueprintReadWrite, EditAnywhere, Category = "Inventory")
+    AActor* ItemData;
 };

@@ -6,7 +6,11 @@
 #include "CoreMinimal.h"
 #include "SKInventoryComponent.generated.h"
 
-class ASKCollectible;
+class USKInventoryObjectData;
+class ASKBaseCharacter;
+
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnItemPickupDelegate, const AActor *, PickedItem);
+DECLARE_DYNAMIC_DELEGATE(FOnInventoryUpdated);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SIRKNIGHT_API USKInventoryComponent : public UActorComponent
@@ -16,25 +20,32 @@ class SIRKNIGHT_API USKInventoryComponent : public UActorComponent
   public:
     USKInventoryComponent();
 
-    void AddToInventory(const TObjectPtr<AActor> Item);
-    void RemoveFromInventory(const TObjectPtr<AActor> Item);
-    void SortInventory();
+    UFUNCTION(BlueprintCallable, Category = "Inventory")
+    void AddToInventory(AActor *PickedItem);
+    UFUNCTION(BlueprintCallable, Category = "Inventory")
+    void RemoveFromInventory(AActor *ItemToRemove);
+    UFUNCTION(BlueprintCallable, Category = "Inventory")
+    bool IsInventoryEmpty() const { return InventoryData.IsEmpty(); }
 
-    TArray<TObjectPtr<AActor>> GetInventoryData() const { return InventoryData; }
+    UPROPERTY(BlueprintAssignable, Category = "Interactions")
+    FOnItemPickupDelegate OnItemPickup;
+    UPROPERTY(BlueprintReadOnly, Category = "Interactions")
+    FOnInventoryUpdated OnInventoryUpdated;
+
+    TArray<TWeakObjectPtr<AActor>> &GetInventoryData() { return InventoryData; }
 
     UFUNCTION(BlueprintPure)
     int32 GetInventorySize() { return InventoryData.Num(); }
-
-    UFUNCTION(BlueprintPure)
-    AActor *GetItemByIndex(int32 Index = 0)
-    {
-        //UE_LOG(LogTemp, Display, TEXT("CHECKINGGGGG"));
-        return InventoryData.IsValidIndex(Index) ? InventoryData[Index].Get() : nullptr;
-    }
 
   protected:
     virtual void BeginPlay() override;
 
   private:
-    TArray<TObjectPtr<AActor>> InventoryData;
+    TArray<TWeakObjectPtr<AActor>> InventoryData;
+    ASKBaseCharacter *OwningCharacter = nullptr;
+
+    void SortInventory();
+
+    ASKBaseCharacter *GetOwningCharacter();
+    void InitDelegates();
 };

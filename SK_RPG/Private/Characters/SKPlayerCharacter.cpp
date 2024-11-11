@@ -4,18 +4,17 @@
 #include "Camera/CameraComponent.h"
 #include "Characters/Components/SKInventoryComponent.h"
 #include "Characters/Components/SKPhysicsHandleComponent.h"
+#include "Controllers/SKPlayerController.h"
 #include "Core/Interface/SKInterfaceInteractable.h"
 #include "Core/SKCoreTypes.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
-#include "PhysicsEngine/PhysicsHandleComponent.h"
-#include "Props/SKCollectible.h"
 #include "UI/SKPlayerHUD.h"
 #include "UI/Widgets/SKInventoryWidget.h"
 
-//********************* DEFAULT *********************
+/********************* DEFAULT *********************/
 ASKPlayerCharacter::ASKPlayerCharacter(const FObjectInitializer &ObjectInitializer) : Super(ObjectInitializer)
 {
     PlayerCamera = CreateDefaultSubobject<UCameraComponent>("Player camera");
@@ -40,7 +39,7 @@ void ASKPlayerCharacter::BeginPlay()
     InitializeComponents();
 }
 
-//********************* INPUT *********************
+/********************* INPUT *********************/
 void ASKPlayerCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputComponent)
 {
     Super::SetupPlayerInputComponent(PlayerInputComponent);
@@ -57,9 +56,11 @@ void ASKPlayerCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputC
         Input->BindAction(InputData.WalkAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::StartWalking);
         Input->BindAction(InputData.AltAction, ETriggerEvent::Triggered, this,
                           &ASKPlayerCharacter::HandleAlternativeAction);
-        Input->BindAction(InputData.InteractionAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::Interact);
+        Input->BindAction(InputData.InteractionAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::TakeItem);
         Input->BindAction(InputData.InteractionActionHold, ETriggerEvent::Triggered, this,
                           &ASKPlayerCharacter::HandleGrabbing);
+        Input->BindAction(InputData.InventoryToggleAction, ETriggerEvent::Triggered, this,
+                          &ASKPlayerCharacter::HandleInventoryToggle);
     }
 }
 
@@ -100,18 +101,20 @@ void ASKPlayerCharacter::LookingAction(const FInputActionValue &Value)
     }
 }
 
-//********************* MULTITHREADING *********************
-void ASKPlayerCharacter::GetLookedAtActor(TObjectPtr<AActor> &LookedAtActor) const
+/********************* MULTITHREADING *********************/
+AActor *ASKPlayerCharacter::GetLookedAtActor() const
 {
     double BestDotProduct = -1.0f;
+    double Threshold;
+    AActor *Item = nullptr;
 
     FRWScopeLock ReadLock(DataGuard, SLT_ReadOnly);
 
-    for (const auto &Item : InteractablesInVicinity)
+    for (const auto &ItemInVicinity : InteractablesInVicinity)
     {
         // get actor bounds
         FVector ActorBoundsOrigin, ActorBoxExtent;
-        Item->GetActorBounds(false, ActorBoundsOrigin, ActorBoxExtent);
+        ItemInVicinity->GetActorBounds(false, ActorBoundsOrigin, ActorBoxExtent);
 
         // calcuate dot product
         const auto DotProduct = FVector::DotProduct(
@@ -123,52 +126,38 @@ void ASKPlayerCharacter::GetLookedAtActor(TObjectPtr<AActor> &LookedAtActor) con
             continue;
 
         // Minimally required dot product value to be considered
-        const auto Threshold = FMath::Clamp(
+        Threshold = FMath::Clamp(
             (FVector::Distance(PlayerCamera->GetComponentLocation(), ActorBoundsOrigin) / 10000.0f) + 0.95f, 0.0f,
             0.99f);
 
-        if (BestDotProduct < Threshold)
-            LookedAtActor = nullptr;
-        else
-            LookedAtActor = Item;
+        Item = ItemInVicinity;
     }
+
+    if (BestDotProduct < Threshold)
+        return nullptr;
+    else
+        return Item;
 }
 
-void ASKPlayerCharacter::PrintDebugInfo() // DEBUG
+void ASKPlayerCharacter::PrintDebugInfo()
 {
-    // showing the amount of items in vicinity
-    if (DataGuard.TryReadLock())
-    {
+    /*
+        // showing the amount of items in vicinity
+        if (DataGuard.TryReadLock())
+        {
 
-        GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
-                                         "Items in list: " + FString::FromInt(InteractablesInVicinity.Num()), true);
-        DataGuard.ReadUnlock();
-    }
+            GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
+                                             "Items in list: " + FString::FromInt(InteractablesInVicinity.Num()), true);
+            DataGuard.ReadUnlock();
+        }
 
-    // Show if can interact in the moment
-    if (InteractibleActive)
-    {
-        GEngine->AddOnScreenDebugMessage(2, 0.0f, FColor::Emerald, "I'm looking at: " + InteractibleActive->GetName(),
-                                         true);
-    }
-
-    // Current player state || This system will be replaced with GAS
-    if (GetWorld())
-    {
-        FString CurrentActionType = UEnum::GetValueAsString(GetActionType());
-        FString CurrentMovementType = UEnum::GetValueAsString(GetMovementType());
-        GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
-                                         "Current states: " + CurrentMovementType + " | " + CurrentActionType, true);
-    }
-
-    // Inventory
-    if (Inventory)
-    {
-        GEngine->AddOnScreenDebugMessage(6, 0.0f, FColor::Cyan,
-                                         "Items in inventory: " + FString::FromInt(Inventory->GetInventoryData().Num()),
-                                         true);
-    }
-
+        // Show if can interact in the moment
+        if (InteractibleActive.IsValid())
+        {
+            GEngine->AddOnScreenDebugMessage(2, 0.0f, FColor::Emerald, "I'm looking at: " +
+       InteractibleActive->GetName(), true);
+        }
+        */
     // Draw XY arrows for physics handle
     if (PhysicsHandle && PhysicsHandle->GrabbedComponent)
     {
@@ -206,7 +195,7 @@ void ASKPlayerCharacter::PrintDebugInfo() // DEBUG
     }
 
     // Interactible active rotation debug info
-    if (InteractibleActive)
+    if (InteractibleActive.IsValid())
     {
         // Получаем ротацию активного объекта
         FRotator InteractibleRotation = InteractibleActive->GetActorRotation();
@@ -237,17 +226,34 @@ void ASKPlayerCharacter::PrintDebugInfo() // DEBUG
                             PhysicsHandleTargetRotation.Pitch, PhysicsHandleTargetRotation.Yaw,
                             PhysicsHandleTargetRotation.Roll));
     }
+
+    // Current player state || This system will be replaced with GAS
+    if (GetWorld())
+    {
+        FString CurrentActionType = UEnum::GetValueAsString(GetActionType());
+        FString CurrentMovementType = UEnum::GetValueAsString(GetMovementType());
+        GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
+                                         "Current states: " + CurrentMovementType + " | " + CurrentActionType, true);
+    }
+
+    // Inventory
+    if (Inventory)
+    {
+        GEngine->AddOnScreenDebugMessage(6, 0.0f, FColor::Cyan,
+                                         "Items in inventory: " + FString::FromInt(Inventory->GetInventoryData().Num()),
+                                         true);
+    } // DEBUG
 }
 
-//********************* INTERACTIONS *********************
+/********************* INTERACTIONS *********************/
 
 void ASKPlayerCharacter::HandleInteractionActor()
 {
-    GetLookedAtActor(InteractibleActive);
-    if (!InteractibleActive) return;
+    InteractibleActive = GetLookedAtActor();
+    if (!InteractibleActive.IsValid()) return;
 
     // final check with trace
-    FHitResult TraceCheck = TraceToActor(InteractibleActive);
+    FHitResult TraceCheck = TraceToActor(InteractibleActive.Get());
 
     if (!TraceCheck.bBlockingHit) return;
 
@@ -264,28 +270,50 @@ void ASKPlayerCharacter::HandleInteractionActor()
     }
 }
 
-void ASKPlayerCharacter::Interact()
+void ASKPlayerCharacter::TakeItem()
 {
+    // Current logic works only for picking up items. It has to be updated to automatically choose between interaction
+    // and picking up
+
     if (GetActionType() == EActionType::EGrabbing)
     {
         PhysicsHandle->ReleaseItem();
         SetActionType(EActionType::ENone);
     }
+    else if (!InteractibleActive.IsValid())
+    {
+        return;
+    }
     else
     {
+        ASKBaseCharacter::TakeItem();
+        if (PlayerController->GetPlayerHUD()->IsInventoryOpen())
+            PlayerController->GetPlayerHUD()->GetInventoryWidget()->UpdateInventoryWidget();
+    }
+}
 
-        FInventoryItemData ItemData;
-        auto Item = Cast<ASKCollectible>(InteractibleActive);
-        if (!Item) return;
-        ItemData.Name = Item->GetInGameName();
-        PlayerInventoryWidget->AddToInventoryList(ItemData);
-        ASKBaseCharacter::Interact();
+void ASKPlayerCharacter::DropItem(AActor *ItemToDrop)
+{
+    if (!ItemToDrop) return;
+
+    // TODO: Drop item logic
+    Inventory->RemoveFromInventory(ItemToDrop);
+
+    FHitResult dropPosition;
+
+    if (TraceFromCamera(dropPosition, 150.0f))
+    {
+        ItemToDrop->SetActorLocation(dropPosition.ImpactPoint);
+    }
+    else
+    {
+        ItemToDrop->SetActorLocation(dropPosition.TraceEnd);
     }
 }
 
 bool ASKPlayerCharacter::CanGrabItem()
 {
-    if (!InteractibleActive) return false;
+    if (!InteractibleActive.IsValid()) return false;
 
     if (GetActionType() == EActionType::ENone && InteractibleActive->GetRootComponent()->IsSimulatingPhysics())
     {
@@ -326,20 +354,18 @@ void ASKPlayerCharacter::HandleAlternativeAction()
     }
 }
 
-//********************* UTILS *********************
+/*********************** UI ***********************/
+void ASKPlayerCharacter::HandleInventoryToggle() { PlayerController->ToggleInventoryHUD(); }
+
+/********************* UTILS *********************/
 
 void ASKPlayerCharacter::InitializeComponents()
 {
-
-    PlayerController = UGameplayStatics::GetPlayerController(this, 0);
+    PlayerController = Cast<ASKPlayerController>(UGameplayStatics::GetPlayerController(this, 0));
     check(PlayerController.Get());
-    PlayerHUD = Cast<ASKPlayerHUD>(PlayerController->GetHUD());
-    check(PlayerHUD.Get());
-    PlayerInventoryWidget = Cast<USKInventoryWidget>(PlayerHUD->GetInventoryWidget());
-    check(PlayerInventoryWidget.Get());
 }
 
-FHitResult ASKPlayerCharacter::TraceToActor(const TObjectPtr<AActor> &OtherActor) const
+FHitResult ASKPlayerCharacter::TraceToActor(const AActor *OtherActor) const
 {
 
     FHitResult HitResult;
@@ -359,7 +385,7 @@ bool ASKPlayerCharacter::TraceFromCamera(FHitResult &HitResult, const float Trac
 }
 
 bool ASKPlayerCharacter::TraceFromCamera(FHitResult &HitResult, const float TraceDistance,
-                                         const TObjectPtr<UMeshComponent> ComponentToIgnore)
+                                         const UMeshComponent *ComponentToIgnore)
 {
     FVector TraceStart = PlayerCamera->GetComponentLocation();
     FVector TracecEnd = TraceStart + (PlayerCamera->GetForwardVector() * TraceDistance);

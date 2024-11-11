@@ -14,8 +14,9 @@ class SIRKNIGHT_API ASKCollectible : public ASKInteractableBase
 
   public:
     ASKCollectible();
+    bool bIsInInventory = false;
 
- UFUNCTION(BlueprintCallable)
+    UFUNCTION(BlueprintCallable)
     int32 GetItemQuantity() const { return Quantity; }
 
     virtual void OnInteraction_Implementation(const AActor *TriggeredActor) override;
@@ -23,4 +24,7 @@ class SIRKNIGHT_API ASKCollectible : public ASKInteractableBase
   protected:
   private:
     int32 Quantity;
+
+    void HideFromWorld();
+    void ShowInWorld();
 };

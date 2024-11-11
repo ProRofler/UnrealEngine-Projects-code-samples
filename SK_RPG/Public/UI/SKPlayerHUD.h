@@ -7,6 +7,7 @@
 #include "SKPlayerHUD.generated.h"
 
 class UUserWidget;
+class USKInventoryWidget;
 
 UCLASS()
 class SIRKNIGHT_API ASKPlayerHUD : public AHUD
@@ -16,14 +17,20 @@ class SIRKNIGHT_API ASKPlayerHUD : public AHUD
   public:
     virtual void DrawHUD() override;
 
-    TObjectPtr<UUserWidget> GetInventoryWidget() { return InventoryWidget; }
+    TObjectPtr<USKInventoryWidget> &GetInventoryWidget() { return InventoryWidget; }
+
+    bool IsInventoryOpen() { return bIsInventoryOpen; }
+    void ToggleInventoryVisibility();
 
   protected:
     virtual void BeginPlay() override;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Widget classes")
-    TSubclassOf<UUserWidget> InventoryWidgetClass;
-    TObjectPtr<UUserWidget> InventoryWidget;
+    TSubclassOf<USKInventoryWidget> InventoryWidgetClass;
+    TObjectPtr<USKInventoryWidget> InventoryWidget;
+
+    UPROPERTY(BlueprintReadWrite, Category = "UI")
+    bool bIsInventoryOpen = false;
 
   private:
     void DrawCrosshair();

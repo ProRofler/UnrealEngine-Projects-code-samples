@@ -28,5 +28,5 @@ class SIRKNIGHT_API USKPhysicsHandleComponent : public UPhysicsHandleComponent
     ASKPlayerCharacter *Player = nullptr;
     TObjectPtr<UMeshComponent> ItemToGrab;
     FRotator InitialRelativeRotation;
-    float CheckDistanceToPlayer(const TObjectPtr<AActor> OtherActor);
+    float CheckDistanceToPlayer(const AActor *OtherActor);
 };

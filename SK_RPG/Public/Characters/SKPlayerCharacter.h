@@ -7,10 +7,8 @@
 #include "CoreMinimal.h"
 #include "SKPlayerCharacter.generated.h"
 
-struct FEnhancedInputData;
-
 class UCameraComponent;
-class APlayerController;
+class ASKPlayerController;
 class ASKPlayerHUD;
 class USKInventoryWidget;
 class USKPhysicsHandleComponent;
@@ -22,12 +20,11 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
 
   public:
     friend USKPhysicsHandleComponent;
+    friend USKInventoryWidget;
+
     ASKPlayerCharacter(const FObjectInitializer &ObjectInitializer);
     virtual void SetupPlayerInputComponent(class UInputComponent *PlayerInputComponent) override;
     virtual void Tick(float DeltaTime) override;
-
-    UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Actor components")
-    TObjectPtr<USKPhysicsHandleComponent> PhysicsHandle;
 
     // ******** UTILS *****
     bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance);
@@ -41,21 +38,22 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
     TObjectPtr<UCameraComponent> PlayerCamera;
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "_Enhanced input settings")
     FEnhancedInputData InputData;
+    UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Actor components")
+    TObjectPtr<USKPhysicsHandleComponent> PhysicsHandle;
 
     void HandleAlternativeAction();
 
     // interactions
     virtual void HandleInteractionActor() override;
-    virtual void Interact() override;
+    virtual void TakeItem() override;
+    void DropItem(AActor *ItemToDrop);
 
     UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Interactions settings")
     float GrabDistance = 150.0f;
 
   private:
     // player components
-    TWeakObjectPtr<APlayerController> PlayerController;
-    TWeakObjectPtr<ASKPlayerHUD> PlayerHUD;
-    TWeakObjectPtr<USKInventoryWidget> PlayerInventoryWidget;
+    TWeakObjectPtr<ASKPlayerController> PlayerController;
 
     void InitializeComponents();
 
@@ -66,11 +64,13 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
     UFUNCTION()
     void LookingAction(const FInputActionValue &Value);
 
+    // UI
+    void HandleInventoryToggle();
+
     // interactions
-    void GetLookedAtActor(TObjectPtr<AActor> &LookedAtActor) const;
-    bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance,
-                         const TObjectPtr<UMeshComponent> ComponentToIgnore);
-    FHitResult TraceToActor(const TObjectPtr<AActor> &OtherActor) const;
+    AActor *GetLookedAtActor() const;
+    bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance, const UMeshComponent *ComponentToIgnore);
+    FHitResult TraceToActor(const AActor *OtherActor) const;
 
     // grabbing
     void HandleGrabbing();

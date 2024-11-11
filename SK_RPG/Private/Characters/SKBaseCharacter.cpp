@@ -140,16 +140,9 @@ void ASKBaseCharacter::HandleInteractionActor()
     // TODO: AI interaction logic
 }
 
-void ASKBaseCharacter::Interact()
+void ASKBaseCharacter::TakeItem()
 {
-    if (InteractibleActive)
-    {
-        Inventory->AddToInventory(InteractibleActive);
-        ISKInterfaceInteractable::Execute_OnInteraction(InteractibleActive, this);
+    if (!InteractibleActive.IsValid()) return;
 
-    }
-    else
-    {
-        return;
-    }
+    Inventory->AddToInventory(InteractibleActive.Get());
 }

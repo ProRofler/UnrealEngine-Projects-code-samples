@@ -2,11 +2,10 @@
 
 #pragma once
 
+#include "CoreMinimal.h"
 #include "Core/Interface/SKInterfaceCharacter.h"
 #include "Core/SKCoreTypes.h"
-#include "CoreMinimal.h"
 #include "GameFramework/Character.h"
-#include "Misc/ScopeLock.h"
 #include "SKBaseCharacter.generated.h"
 
 class USKCharacterMovementComponent;
@@ -32,7 +31,8 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     bool GetWalkToggle() const { return bWalkToggle; }
     EActionType GetActionType() const { return ActionType; }
     EMovementType GetMovementType() const { return MovementType; }
-    const TObjectPtr<AActor> &GetInteractibleActive() const { return InteractibleActive; }
+    const TWeakObjectPtr<AActor> &GetInteractibleActive() const { return InteractibleActive; }
+    const TObjectPtr<USKInventoryComponent> &GetInventoryComponent() { return Inventory; }
 
     // setters
     void SetActionType(const EActionType _ActionType) { ActionType = _ActionType; }
@@ -52,13 +52,13 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     TObjectPtr<USKInventoryComponent> Inventory;
 
     TSet<AActor *> InteractablesInVicinity;
-    TObjectPtr<AActor> InteractibleActive;
+    TWeakObjectPtr<AActor> InteractibleActive;
     FTimerHandle InteractionTimer;
 
     void HandleInteractionsTimer();
     void AsyncInteractionHandle();
     virtual void HandleInteractionActor();
-    virtual void Interact();
+    virtual void TakeItem();
 
     mutable FRWLock DataGuard;
 

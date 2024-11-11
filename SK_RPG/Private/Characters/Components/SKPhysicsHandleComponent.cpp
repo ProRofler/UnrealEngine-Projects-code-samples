@@ -8,7 +8,7 @@ USKPhysicsHandleComponent::USKPhysicsHandleComponent() { Player = Cast<ASKPlayer
 
 void USKPhysicsHandleComponent::GrabItem()
 {
-    if (!(Player->GetInteractibleActive())) return;
+    if (!(Player->GetInteractibleActive().IsValid())) return;
 
     ItemToGrab = Player->GetInteractibleActive()->FindComponentByClass<UMeshComponent>();
     if (!ItemToGrab) return;
@@ -84,7 +84,7 @@ void USKPhysicsHandleComponent::RotateGrabbedComponent(const FVector2D &Input)
     SetTargetRotation(HandleRot);
 }
 
-float USKPhysicsHandleComponent::CheckDistanceToPlayer(const TObjectPtr<AActor> OtherActor)
+float USKPhysicsHandleComponent::CheckDistanceToPlayer(const AActor *OtherActor)
 {
     const auto Distance =
         FVector::DistSquared(Player->PlayerCamera->GetComponentLocation(), OtherActor->GetActorLocation());
