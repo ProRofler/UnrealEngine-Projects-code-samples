@@ -19,10 +19,11 @@ class SIRKNIGHT_API USKCharacterMovementComponent : public UCharacterMovementCom
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "__TEMP Skills")
     float Athletics = 35.0f;
     
-    void SetCharacterSpeed(const EMovementType& MovementType);
-
-    /*void StartWalking();
-    void StartSprinting();*/
+    void SetCharacterSpeed(const EMovementType& MovementType);   
+    
+    void StartRunning();
+    
+    void StartSprinting();
 
   protected:
     

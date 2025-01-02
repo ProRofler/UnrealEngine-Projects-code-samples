@@ -5,7 +5,7 @@
 #include "AbilitySystemComponent.h"
 #include "AttributeSet.h"
 #include "CoreMinimal.h"
-#include "SKAttributeSet.generated.h"
+#include "SKAttributeSetSkills.generated.h"
 
 #define ATTRIBUTE_ACCESSORS(ClassName, PropertyName)                                                                   \
     GAMEPLAYATTRIBUTE_PROPERTY_GETTER(ClassName, PropertyName)                                                         \
@@ -14,20 +14,16 @@
     GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
 
 UCLASS()
-class SIRKNIGHT_API USKAttributeSet : public UAttributeSet
+class SIRKNIGHT_API USKAttributeSetSkills : public UAttributeSet
 {
     GENERATED_BODY()
 
   public:
-    USKAttributeSet();
+    USKAttributeSetSkills(){};
 
-    ATTRIBUTE_ACCESSORS(USKAttributeSet, Health);
-    ATTRIBUTE_ACCESSORS(USKAttributeSet, Stamina);
+    ATTRIBUTE_ACCESSORS(USKAttributeSetSkills, Athletics);
 
   protected:
-    UPROPERTY(BlueprintReadOnly, Category = "Main attributes")
-    FGameplayAttributeData Health;
-
-    UPROPERTY(BlueprintReadOnly, Category = "Main attributes")
-    FGameplayAttributeData Stamina;
+    UPROPERTY(BlueprintReadOnly, Category = "Skills")
+    FGameplayAttributeData Athletics;
 };

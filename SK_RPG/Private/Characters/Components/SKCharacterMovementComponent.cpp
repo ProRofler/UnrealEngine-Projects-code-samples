@@ -4,9 +4,6 @@
 #include "Characters/SKBaseCharacter.h"
 #include "Core/SKLogCategories.h"
 
-
-
-
 USKCharacterMovementComponent::USKCharacterMovementComponent(const FObjectInitializer &ObjectInitializer)
     : Super(ObjectInitializer)
 {
@@ -25,22 +22,23 @@ void USKCharacterMovementComponent::BeginPlay()
         SetCharacterSpeed(EMovementType::ERunning);
 }
 
-void USKCharacterMovementComponent::SetCharacterSpeed(const EMovementType& MovementType)
+void USKCharacterMovementComponent::SetCharacterSpeed(const EMovementType &MovementType)
 {
     switch (MovementType)
     {
-    case EMovementType::EWalking:
-        MaxWalkSpeed = 120.0f;
-        break;
-    case EMovementType::ERunning:
-        MaxWalkSpeed = BaseWalkSpeed * (Athletics / 100.0f);
-        break;
-    case EMovementType::ESprinting:
-        MaxWalkSpeed = (BaseWalkSpeed * 2.0f) * (Athletics / 100.0f);
-        break;
+    case EMovementType::EWalking: MaxWalkSpeed = 120.0f; break;
+    case EMovementType::ERunning: MaxWalkSpeed = BaseWalkSpeed * (Athletics / 100.0f); break;
+    case EMovementType::ESprinting: MaxWalkSpeed = (BaseWalkSpeed * 2.0f) * (Athletics / 100.0f); break;
     default:
-        UE_LOG(LogSKCharacterMovement, Error, TEXT("Invalid or not implemented enum EMovementType was passed in %s Movement component's SetCharacterSpeed funtion"), *GetOwner()->GetActorNameOrLabel());
-        checkf(false, TEXT("Invalid or not implemented enum EMovementType was passed"));
-        break;
+        UE_LOG(LogSKCharacterMovement, Error,
+               TEXT("Invalid or not implemented enum EMovementType was passed in %s Movement component's "
+                    "SetCharacterSpeed funtion"),
+               *GetOwner()->GetActorNameOrLabel());
+        // checkf(false, TEXT("Invalid or not implemented enum EMovementType was passed"));
+        return;
     }
 }
+
+void USKCharacterMovementComponent::StartRunning() { MaxWalkSpeed = BaseWalkSpeed * (Athletics / 100.0f); }
+
+void USKCharacterMovementComponent::StartSprinting() { MaxWalkSpeed = (BaseWalkSpeed * 2.0f) * (Athletics / 100.0f); }

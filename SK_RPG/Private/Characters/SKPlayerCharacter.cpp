@@ -9,6 +9,7 @@
 #include "Core/SKCoreTypes.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Gameplay/GAS/SKAbilitySystemComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
 #include "UI/SKPlayerHUD.h"
@@ -51,8 +52,8 @@ void ASKPlayerCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputC
         Input->BindAction(InputData.MovingAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::MoveAction);
         Input->BindAction(InputData.LookAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::LookingAction);
         Input->BindAction(InputData.JumpAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::Jump);
-        Input->BindAction(InputData.SprintAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::StartSprinting);
-        Input->BindAction(InputData.SprintAction, ETriggerEvent::Completed, this, &ASKPlayerCharacter::StartRunning);
+        Input->BindAction(InputData.SprintAction, ETriggerEvent::Triggered, this,
+                          &ASKPlayerCharacter::ActivateSprintAbility);
         Input->BindAction(InputData.WalkAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::StartWalking);
         Input->BindAction(InputData.AltAction, ETriggerEvent::Triggered, this,
                           &ASKPlayerCharacter::HandleAlternativeAction);
@@ -141,6 +142,17 @@ AActor *ASKPlayerCharacter::GetLookedAtActor() const
 
 void ASKPlayerCharacter::PrintDebugInfo()
 {
+
+    // Current player state in enums (deprecated)
+    if (GetWorld())
+    {
+        FString CurrentActionType = UEnum::GetValueAsString(GetActionType());
+        FString CurrentMovementType = UEnum::GetValueAsString(GetMovementType());
+        GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
+                                         "Current states: " + CurrentMovementType + " | " + CurrentActionType, true);
+    }
+
+    // Vicinity Debug
     /*
         // showing the amount of items in vicinity
         if (DataGuard.TryReadLock())
@@ -158,7 +170,8 @@ void ASKPlayerCharacter::PrintDebugInfo()
        InteractibleActive->GetName(), true);
         }
         */
-    // Draw XY arrows for physics handle
+    // Draw XY arrows for physics handle debug
+    /*
     if (PhysicsHandle && PhysicsHandle->GrabbedComponent)
     {
         // Получаем текущее положение и ротацию Physics Handle
@@ -192,9 +205,10 @@ void ASKPlayerCharacter::PrintDebugInfo()
                                   0,            // Приоритет
                                   2.0f          // Толщина стрелки
         );
-    }
+    } */
 
     // Interactible active rotation debug info
+    /*
     if (InteractibleActive.IsValid())
     {
         // Получаем ротацию активного объекта
@@ -207,9 +221,10 @@ void ASKPlayerCharacter::PrintDebugInfo()
             FColor::Cyan, // Цвет текста
             FString::Printf(TEXT("InteractibleActive Rotation: Pitch: %f, Yaw: %f, Roll: %f"),
                             InteractibleRotation.Pitch, InteractibleRotation.Yaw, InteractibleRotation.Roll));
-    }
+    }*/
 
     // Phys handle rotation debug info
+    /*
     if (PhysicsHandle)
     {
         // Получаем TargetRotation Physics Handle
@@ -225,24 +240,16 @@ void ASKPlayerCharacter::PrintDebugInfo()
             FString::Printf(TEXT("PhysicsHandle Target Rotation: Pitch: %f, Yaw: %f, Roll: %f"),
                             PhysicsHandleTargetRotation.Pitch, PhysicsHandleTargetRotation.Yaw,
                             PhysicsHandleTargetRotation.Roll));
-    }
+    }*/
 
-    // Current player state || This system will be replaced with GAS
-    if (GetWorld())
-    {
-        FString CurrentActionType = UEnum::GetValueAsString(GetActionType());
-        FString CurrentMovementType = UEnum::GetValueAsString(GetMovementType());
-        GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
-                                         "Current states: " + CurrentMovementType + " | " + CurrentActionType, true);
-    }
-
-    // Inventory
+    // Inventory debug info
+    /*
     if (Inventory)
     {
         GEngine->AddOnScreenDebugMessage(6, 0.0f, FColor::Cyan,
                                          "Items in inventory: " + FString::FromInt(Inventory->GetInventoryData().Num()),
                                          true);
-    } // DEBUG
+    } */
 }
 
 /********************* INTERACTIONS *********************/
@@ -272,8 +279,8 @@ void ASKPlayerCharacter::HandleInteractionActor()
 
 void ASKPlayerCharacter::TakeItem()
 {
-    // Current logic works only for picking up items. It has to be updated to automatically choose between interaction
-    // and picking up
+    // Current logic works only for picking up items. It has to be updated to automatically choose between
+    // interaction and picking up
 
     if (GetActionType() == EActionType::EGrabbing)
     {

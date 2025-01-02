@@ -2,9 +2,10 @@
 
 #pragma once
 
-#include "CoreMinimal.h"
+#include "AbilitySystemInterface.h"
 #include "Core/Interface/SKInterfaceCharacter.h"
 #include "Core/SKCoreTypes.h"
+#include "CoreMinimal.h"
 #include "GameFramework/Character.h"
 #include "SKBaseCharacter.generated.h"
 
@@ -13,18 +14,38 @@ class USKInventoryComponent;
 class UCapsuleComponent;
 class ASKInteractableBase;
 class UPhysicsHandleComponent;
+class UAbilitySystemComponent;
+class UAttributeSet;
+class USKAbilitySystemComponent;
+class UGameplayAbility;
 
 UCLASS()
-class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCharacter
+class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCharacter, public IAbilitySystemInterface
 {
     GENERATED_BODY()
 
   public:
     ASKBaseCharacter(const FObjectInitializer &ObjectInitializer);
 
+    /************************************ UE INHERITED ******************************************/
+
+  public:
     virtual void Tick(float DeltaTime) override;
 
-    // Getters
+  protected:
+    virtual void BeginPlay() override;
+
+  private:
+    UFUNCTION()
+    void OnBeginOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp,
+                        int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult);
+
+    UFUNCTION()
+    void OnOverlapEnd(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp,
+                      int32 OtherBodyIndex);
+
+    /************************************ GETTERS ******************************************/
+  public:
     UFUNCTION(BlueprintCallable)
     bool GetWantsTosprint() const { return bWantsToSprint; }
     UFUNCTION(BlueprintCallable)
@@ -33,19 +54,24 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     EMovementType GetMovementType() const { return MovementType; }
     const TWeakObjectPtr<AActor> &GetInteractibleActive() const { return InteractibleActive; }
     const TObjectPtr<USKInventoryComponent> &GetInventoryComponent() { return Inventory; }
+    virtual UAbilitySystemComponent *GetAbilitySystemComponent() const override;
 
-    // setters
+    /************************************ SETTERS ******************************************/
     void SetActionType(const EActionType _ActionType) { ActionType = _ActionType; }
 
-    // movement related
-    void StartSprinting();
+    /************************************ MOVEMENT  ******************************************/
+  public:
+    UFUNCTION(BlueprintCallable)
+    void StartSrinting() const;
+    UFUNCTION(BlueprintCallable)
+    void StartRunning() const;
+
+    // old
     void StartWalking();
     void StartRunning();
 
+    /************************************ Interactions  ******************************************/
   protected:
-    virtual void BeginPlay() override;
-
-    // interactions
     UPROPERTY(BlueprintReadWrite)
     TObjectPtr<UCapsuleComponent> InteractionZone;
     UPROPERTY(BlueprintReadWrite)
@@ -56,26 +82,34 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     FTimerHandle InteractionTimer;
 
     void HandleInteractionsTimer();
-    void AsyncInteractionHandle();
     virtual void HandleInteractionActor();
     virtual void TakeItem();
 
+    /************************************ MULTITHREADING  ******************************************/
+  protected:
     mutable FRWLock DataGuard;
+
+    void AsyncInteractionHandle();
+
+    /************************************ COMPONENTS  ******************************************/
+  protected:
+    TObjectPtr<USKCharacterMovementComponent> MovementComponent;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "GAS", meta = (AllowPrivateAccess = "true"))
+    TObjectPtr<USKAbilitySystemComponent> AbilitySystemComponent;
+    TObjectPtr<const UAttributeSet> AttributeSet;
+    TObjectPtr<const UAttributeSet> AttributeSetSkills;
+
+    /************************************ GAS  ******************************************/
+  public:
+    void ActivateSprintAbility();
+
+    /************************************ MISC\DEPRECATED  ******************************************/
+  public:
+    EMovementType MovementType = EMovementType::ERunning;
+    EActionType ActionType = EActionType::ENone;
 
   private:
     bool bWantsToSprint = false;
     bool bWalkToggle = false;
-
-    TObjectPtr<USKCharacterMovementComponent> MovementComponent;
-    EMovementType MovementType = EMovementType::ERunning;
-    EActionType ActionType = EActionType::ENone;
-
-    // Interactions
-    UFUNCTION()
-    void OnBeginOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp,
-                        int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult);
-
-    UFUNCTION()
-    void OnOverlapEnd(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp,
-                      int32 OtherBodyIndex);
 };

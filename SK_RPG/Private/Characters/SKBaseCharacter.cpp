@@ -4,9 +4,15 @@
 #include "Async/Async.h"
 #include "Characters/Components/SKCharacterMovementComponent.h"
 #include "Characters/Components/SKInventoryComponent.h"
+#include "Characters/Components/SKStateMachineComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "Core/Interface/SKInterfaceInteractable.h"
 #include "Core/SKLogCategories.h"
+#include "Gameplay/GAS/Abilities/SKAbilityBase.h"
+#include "Gameplay/GAS/SKAbilitySystemComponent.h"
+#include "Gameplay/GAS/SKAttributeSet.h"
+#include "Gameplay/GAS/SKAttributeSetSkills.h"
+#include "Logging/StructuredLog.h"
 
 ASKBaseCharacter::ASKBaseCharacter(const FObjectInitializer &ObjectInitializer)
     : Super(ObjectInitializer.SetDefaultSubobjectClass<USKCharacterMovementComponent>(
@@ -14,6 +20,7 @@ ASKBaseCharacter::ASKBaseCharacter(const FObjectInitializer &ObjectInitializer)
 {
     PrimaryActorTick.bCanEverTick = true;
 
+    // Interactions system
     InteractionZone = CreateDefaultSubobject<UCapsuleComponent>("Interactive zone");
     InteractionZone->SetCapsuleHalfHeight(130.0f);
     InteractionZone->SetCapsuleRadius(100.0f);
@@ -24,10 +31,15 @@ ASKBaseCharacter::ASKBaseCharacter(const FObjectInitializer &ObjectInitializer)
     InteractionZone->OnComponentBeginOverlap.AddDynamic(this, &ASKBaseCharacter::OnBeginOverlap);
     InteractionZone->OnComponentEndOverlap.AddDynamic(this, &ASKBaseCharacter::OnOverlapEnd);
 
+    // Components
     MovementComponent = Cast<USKCharacterMovementComponent>(GetCharacterMovement());
+    Inventory = CreateDefaultSubobject<USKInventoryComponent>("Inventory component");
 
-    Inventory = CreateDefaultSubobject<USKInventoryComponent>("Character inventory");
+    // GAS
+    AbilitySystemComponent = CreateDefaultSubobject<USKAbilitySystemComponent>("Ability system component");
 }
+
+/************************************ UE INHERITED ******************************************/
 
 void ASKBaseCharacter::BeginPlay()
 {
@@ -35,50 +47,19 @@ void ASKBaseCharacter::BeginPlay()
 
     check(InteractionZone);
     check(MovementComponent);
+    check(AbilitySystemComponent);
+    // check(AttributeSet);
+
+    if (IsValid(AbilitySystemComponent))
+    {
+        AttributeSet = AbilitySystemComponent->GetSet<USKAttributeSet>();
+        AttributeSetSkills = AbilitySystemComponent->GetSet<USKAttributeSetSkills>();
+    }
 
     MovementType = EMovementType::ERunning;
 }
 
 void ASKBaseCharacter::Tick(float DeltaTime) { Super::Tick(DeltaTime); }
-
-//************************** MOVEMENT **************************
-void ASKBaseCharacter::StartSprinting()
-{
-    if (GetActionType() == EActionType::EGrabbing || GetActionType() == EActionType::ERotating) return;
-
-    bWalkToggle = false;
-    bWantsToSprint = true;
-    MovementType = EMovementType::ESprinting;
-    MovementComponent->SetCharacterSpeed(MovementType);
-}
-
-void ASKBaseCharacter::StartWalking()
-{
-    if (bWantsToSprint || GetActionType() == EActionType::ERotating || GetActionType() == EActionType::EGrabbing)
-        return;
-
-    if (bWalkToggle)
-    {
-        bWalkToggle = false;
-        StartRunning();
-        return;
-    }
-
-    bWalkToggle = true;
-    MovementType = EMovementType::EWalking;
-    MovementComponent->SetCharacterSpeed(MovementType);
-}
-
-void ASKBaseCharacter::StartRunning()
-{
-    bWalkToggle = false;
-    bWantsToSprint = false;
-
-    MovementType = EMovementType::ERunning;
-    MovementComponent->SetCharacterSpeed(MovementType);
-}
-
-//************************** MULTITHREADING **************************
 
 void ASKBaseCharacter::OnBeginOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor,
                                       UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep,
@@ -108,6 +89,80 @@ void ASKBaseCharacter::OnOverlapEnd(UPrimitiveComponent *OverlappedComponent, AA
         InteractibleActive = nullptr;
     }
 }
+
+//************************** GAS **************************
+UAbilitySystemComponent *ASKBaseCharacter::GetAbilitySystemComponent() const
+{
+    return Cast<UAbilitySystemComponent>(AbilitySystemComponent.Get());
+}
+
+void ASKBaseCharacter::ActivateSprintAbility()
+{
+    /*
+    if (GetActionType() == EActionType::EGrabbing || GetActionType() == EActionType::ERotating) return;
+
+    bWalkToggle = false;
+    bWantsToSprint = true;
+    MovementType = EMovementType::ESprinting;
+    MovementComponent->SetCharacterSpeed(MovementType);
+    */
+
+    auto wantToSprintTag = FGameplayTag::RequestGameplayTag("Character.Request.Movement.WantsToSprint");
+    const auto tagContainer = wantToSprintTag.GetSingleTagContainer();
+
+    if (!AbilitySystemComponent->HasMatchingGameplayTag(wantToSprintTag))
+    {
+        AbilitySystemComponent->AddLooseGameplayTag(wantToSprintTag);
+        AbilitySystemComponent->TryActivateAbilitiesByTag(tagContainer);
+
+        UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' wants to sprint",
+                  ("ActorName", this->GetName()));
+    }
+    else
+    {
+
+        AbilitySystemComponent->RemoveLooseGameplayTag(wantToSprintTag);
+        AbilitySystemComponent->CancelAbilities(&tagContainer);
+
+        UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' no loger wants to sprint",
+                  ("ActorName", this->GetName()));
+    }
+}
+
+/************************************ MOVEMENT  ******************************************/
+
+void ASKBaseCharacter::StartSrinting() const { MovementComponent->StartSprinting(); }
+
+void ASKBaseCharacter::StartRunning() const { MovementComponent->StartRunning(); }
+
+// OLD
+void ASKBaseCharacter::StartWalking()
+{
+    if (bWantsToSprint || GetActionType() == EActionType::ERotating || GetActionType() == EActionType::EGrabbing)
+        return;
+
+    if (bWalkToggle)
+    {
+        bWalkToggle = false;
+        StartRunning();
+        return;
+    }
+
+    bWalkToggle = true;
+    MovementType = EMovementType::EWalking;
+    MovementComponent->SetCharacterSpeed(MovementType);
+}
+
+void ASKBaseCharacter::StartRunning()
+{
+    bWalkToggle = false;
+    bWantsToSprint = false;
+
+    MovementType = EMovementType::ERunning;
+    MovementComponent->SetCharacterSpeed(MovementType);
+}
+
+//************************** MULTITHREADING **************************
 
 void ASKBaseCharacter::AsyncInteractionHandle()
 {
