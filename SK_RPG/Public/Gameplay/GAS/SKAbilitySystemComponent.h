@@ -20,6 +20,14 @@ class SIRKNIGHT_API USKAbilitySystemComponent : public UAbilitySystemComponent
     UFUNCTION(BlueprintCallable)
     bool CancelAbilityByClass(TSubclassOf<UGameplayAbility> AbilityClass);
 
+    // Checks if the GAS component has a provided tag and adds one if it doesn't
+    UFUNCTION(BlueprintCallable)
+    bool CheckAndAddGameplayTag(const FGameplayTag &Tag);
+
+    // Checks if the GAS component has a provided tag and removes one if it does
+    UFUNCTION(BlueprintCallable)
+    bool CheckAndRemoveGameplayTag(const FGameplayTag &Tag);
+
     UFUNCTION(BlueprintCallable)
     TArray<UGameplayAbility *> &GetGrantedAbilities() { return GrantedAbilities; };
 
@@ -29,6 +37,9 @@ class SIRKNIGHT_API USKAbilitySystemComponent : public UAbilitySystemComponent
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Abilities|Default Abilities")
     TSubclassOf<UGameplayAbility> SprintingAbility;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Abilities|Default Abilities")
+    TSubclassOf<UGameplayAbility> InteractAbility;
 
   private:
     void InitAbilities();

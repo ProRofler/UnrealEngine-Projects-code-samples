@@ -6,26 +6,6 @@
 
 class ASKCollectible;
 
-UENUM()
-enum class EMovementType
-{
-    EIdle,
-    EWalking,
-    ERunning,
-    ESprinting,
-    ECrouching
-};
-
-UENUM()
-enum class EActionType
-{
-    ENone,
-    EAttacking,
-    EBlocking,
-    EGrabbing,
-    ERotating
-};
-
 struct FCharacterAttributes
 {
     // skills

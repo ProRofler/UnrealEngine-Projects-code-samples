@@ -4,11 +4,11 @@
 
 #include "CoreMinimal.h"
 #include "Props/SKInteractableBase.h"
-
+#include "Core/Interface/SKInterfaceCollectible.h"
 #include "SKCollectible.generated.h"
 
 UCLASS()
-class SIRKNIGHT_API ASKCollectible : public ASKInteractableBase
+class SIRKNIGHT_API ASKCollectible : public ASKInteractableBase, public ISKInterfaceCollectible
 {
     GENERATED_BODY()
 

@@ -7,6 +7,7 @@
 #include "Controllers/SKPlayerController.h"
 #include "Core/Interface/SKInterfaceInteractable.h"
 #include "Core/SKCoreTypes.h"
+#include "Core/SKLogCategories.h"
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 #include "Gameplay/GAS/SKAbilitySystemComponent.h"
@@ -14,6 +15,10 @@
 #include "Kismet/KismetMathLibrary.h"
 #include "UI/SKPlayerHUD.h"
 #include "UI/Widgets/SKInventoryWidget.h"
+
+static const auto canInteractTagB = FGameplayTag::RequestGameplayTag("Character.State.Action.CanInteract");
+static const auto grabbingTagB = FGameplayTag::RequestGameplayTag("Character.State.Action.Grabbing");
+static const auto rotatingTagB = FGameplayTag::RequestGameplayTag("Character.State.Action.Rotating");
 
 /********************* DEFAULT *********************/
 ASKPlayerCharacter::ASKPlayerCharacter(const FObjectInitializer &ObjectInitializer) : Super(ObjectInitializer)
@@ -49,15 +54,18 @@ void ASKPlayerCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputC
 
     if (UEnhancedInputComponent *Input = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
     {
+
         Input->BindAction(InputData.MovingAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::MoveAction);
+        Input->BindAction(InputData.MovingAction, ETriggerEvent::Completed, this, &ASKPlayerCharacter::MoveAction);
         Input->BindAction(InputData.LookAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::LookingAction);
+        Input->BindAction(InputData.LookAction, ETriggerEvent::Completed, this, &ASKPlayerCharacter::LookingAction);
         Input->BindAction(InputData.JumpAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::Jump);
         Input->BindAction(InputData.SprintAction, ETriggerEvent::Triggered, this,
                           &ASKPlayerCharacter::ActivateSprintAbility);
-        Input->BindAction(InputData.WalkAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::StartWalking);
+        Input->BindAction(InputData.WalkAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::TryWalking);
         Input->BindAction(InputData.AltAction, ETriggerEvent::Triggered, this,
                           &ASKPlayerCharacter::HandleAlternativeAction);
-        Input->BindAction(InputData.InteractionAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::TakeItem);
+        Input->BindAction(InputData.InteractionAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::Interact);
         Input->BindAction(InputData.InteractionActionHold, ETriggerEvent::Triggered, this,
                           &ASKPlayerCharacter::HandleGrabbing);
         Input->BindAction(InputData.InventoryToggleAction, ETriggerEvent::Triggered, this,
@@ -80,25 +88,47 @@ void ASKPlayerCharacter::ControllerSetup()
 
 void ASKPlayerCharacter::MoveAction(const FInputActionValue &Value)
 {
-    const FVector2D MovingAxis = Value.Get<FVector2D>();
+    if (Value.IsNonZero())
+    {
+        bIsReceivingInput = true;
+        // UE_LOG(LogSKCharacterMovement, Display, TEXT("Player is receiving movement input"));
 
-    AddMovementInput(GetActorForwardVector(), MovingAxis.X);
-    AddMovementInput(GetActorRightVector(), MovingAxis.Y);
+        const FVector2D MovingAxis = Value.Get<FVector2D>();
+        AddMovementInput(GetActorForwardVector(), MovingAxis.X);
+        AddMovementInput(GetActorRightVector(), MovingAxis.Y);
+    }
+    else
+    {
+        // UE_LOG(LogSKCharacterMovement, Display, TEXT("Player is no longer receiving movement input"));
+
+        bIsReceivingInput = false;
+    }
 }
 
 void ASKPlayerCharacter::LookingAction(const FInputActionValue &Value)
 {
-    const auto LookingAxisX = Value.Get<FVector2D>().X;
-    const auto LookingAxisY = Value.Get<FVector2D>().Y * -1;
-
-    if (GetActionType() != EActionType::ERotating)
+    if (Value.IsNonZero())
     {
-        AddControllerYawInput(LookingAxisX);
-        AddControllerPitchInput(LookingAxisY);
+        bIsReceivingInput = true;
+        // UE_LOG(LogSKCharacterMovement, Display, TEXT("Player receiving looking input"));
+
+        const auto LookingAxisX = Value.Get<FVector2D>().X;
+        const auto LookingAxisY = Value.Get<FVector2D>().Y * -1;
+
+        if (!AbilitySystemComponent->HasMatchingGameplayTag(rotatingTagB))
+        {
+            AddControllerYawInput(LookingAxisX);
+            AddControllerPitchInput(LookingAxisY);
+        }
+        else
+        {
+            PhysicsHandle->RotateGrabbedComponent(Value.Get<FVector2D>());
+        }
     }
     else
     {
-        PhysicsHandle->RotateGrabbedComponent(Value.Get<FVector2D>());
+        bIsReceivingInput = false;
+        // UE_LOG(LogSKCharacterMovement, Display, TEXT("Player is no longer receiving looking input"));
     }
 }
 
@@ -142,16 +172,6 @@ AActor *ASKPlayerCharacter::GetLookedAtActor() const
 
 void ASKPlayerCharacter::PrintDebugInfo()
 {
-
-    // Current player state in enums (deprecated)
-    if (GetWorld())
-    {
-        FString CurrentActionType = UEnum::GetValueAsString(GetActionType());
-        FString CurrentMovementType = UEnum::GetValueAsString(GetMovementType());
-        GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
-                                         "Current states: " + CurrentMovementType + " | " + CurrentActionType, true);
-    }
-
     // Vicinity Debug
     /*
         // showing the amount of items in vicinity
@@ -174,36 +194,36 @@ void ASKPlayerCharacter::PrintDebugInfo()
     /*
     if (PhysicsHandle && PhysicsHandle->GrabbedComponent)
     {
-        // Получаем текущее положение и ротацию Physics Handle
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ Physics Handle
         FVector HandleLocation;
         FRotator HandleRotation;
         PhysicsHandle->GetTargetLocationAndRotation(HandleLocation, HandleRotation);
 
-        // Длина стрелок
+        // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         float ArrowLength = 30.0f;
 
-        // Стрелка по оси X (красная)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ X (пїЅпїЅпїЅпїЅпїЅпїЅпїЅ)
         FVector XDirection = HandleRotation.RotateVector(FVector::ForwardVector) * ArrowLength;
         FVector XArrowEnd = HandleLocation + XDirection;
         DrawDebugDirectionalArrow(GetWorld(), HandleLocation, XArrowEnd,
-                                  25.0f,       // Длина "перышек" стрелы
-                                  FColor::Red, // Цвет для оси X
-                                  false,       // Постоянная отрисовка
-                                  -1.0f,       // Время жизни стрелы
-                                  0,           // Приоритет
-                                  2.0f         // Толщина стрелки
+                                  25.0f,       // пїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅпїЅпїЅпїЅпїЅ
+                                  FColor::Red, // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ X
+                                  false,       // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+                                  -1.0f,       // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+                                  0,           // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+                                  2.0f         // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         );
 
-        // Стрелка по оси Z (синяя)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅ Z (пїЅпїЅпїЅпїЅпїЅ)
         FVector ZDirection = HandleRotation.RotateVector(FVector::UpVector) * ArrowLength;
         FVector ZArrowEnd = HandleLocation + ZDirection;
         DrawDebugDirectionalArrow(GetWorld(), HandleLocation, ZArrowEnd,
-                                  25.0f,        // Длина "перышек" стрелы
-                                  FColor::Blue, // Цвет для оси Z
-                                  false,        // Постоянная отрисовка
-                                  -1.0f,        // Время жизни стрелы
-                                  0,            // Приоритет
-                                  2.0f          // Толщина стрелки
+                                  25.0f,        // пїЅпїЅпїЅпїЅпїЅ "пїЅпїЅпїЅпїЅпїЅпїЅпїЅ" пїЅпїЅпїЅпїЅпїЅпїЅ
+                                  FColor::Blue, // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅ пїЅпїЅпїЅ Z
+                                  false,        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+                                  -1.0f,        // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
+                                  0,            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+                                  2.0f          // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         );
     } */
 
@@ -211,14 +231,14 @@ void ASKPlayerCharacter::PrintDebugInfo()
     /*
     if (InteractibleActive.IsValid())
     {
-        // Получаем ротацию активного объекта
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         FRotator InteractibleRotation = InteractibleActive->GetActorRotation();
 
-        // Выводим ротацию активного объекта на экран
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         GEngine->AddOnScreenDebugMessage(
-            -1, // Уникальный ID сообщения, -1 означает, что сообщение исчезнет через время
-            0,  // Время отображения сообщения
-            FColor::Cyan, // Цвет текста
+            -1, // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ID пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, -1 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+            0,  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+            FColor::Cyan, // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             FString::Printf(TEXT("InteractibleActive Rotation: Pitch: %f, Yaw: %f, Roll: %f"),
                             InteractibleRotation.Pitch, InteractibleRotation.Yaw, InteractibleRotation.Roll));
     }*/
@@ -227,16 +247,16 @@ void ASKPlayerCharacter::PrintDebugInfo()
     /*
     if (PhysicsHandle)
     {
-        // Получаем TargetRotation Physics Handle
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ TargetRotation Physics Handle
         FRotator PhysicsHandleTargetRotation;
         FVector t;
         PhysicsHandle->GetTargetLocationAndRotation(t, PhysicsHandleTargetRotation);
 
-        // Выводим TargetRotation Physics Handle на экран
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ TargetRotation Physics Handle пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         GEngine->AddOnScreenDebugMessage(
-            -1, // Уникальный ID сообщения, -1 означает, что сообщение исчезнет через время
-            0,  // Время отображения сообщения
-            FColor::Green, // Цвет текста
+            -1, // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ ID пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, -1 пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
+            0,  // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+            FColor::Green, // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
             FString::Printf(TEXT("PhysicsHandle Target Rotation: Pitch: %f, Yaw: %f, Roll: %f"),
                             PhysicsHandleTargetRotation.Pitch, PhysicsHandleTargetRotation.Yaw,
                             PhysicsHandleTargetRotation.Roll));
@@ -257,7 +277,12 @@ void ASKPlayerCharacter::PrintDebugInfo()
 void ASKPlayerCharacter::HandleInteractionActor()
 {
     InteractibleActive = GetLookedAtActor();
-    if (!InteractibleActive.IsValid()) return;
+
+    if (!InteractibleActive.IsValid())
+    {
+        AbilitySystemComponent->CheckAndRemoveGameplayTag(canInteractTagB);
+        return;
+    }
 
     // final check with trace
     FHitResult TraceCheck = TraceToActor(InteractibleActive.Get());
@@ -269,6 +294,7 @@ void ASKPlayerCharacter::HandleInteractionActor()
 
     {
         InteractibleActive = TraceCheck.GetActor();
+        AbilitySystemComponent->CheckAndAddGameplayTag(canInteractTagB);
     }
 
     else
@@ -277,15 +303,13 @@ void ASKPlayerCharacter::HandleInteractionActor()
     }
 }
 
-void ASKPlayerCharacter::TakeItem()
+void ASKPlayerCharacter::Interact()
 {
-    // Current logic works only for picking up items. It has to be updated to automatically choose between
-    // interaction and picking up
-
-    if (GetActionType() == EActionType::EGrabbing)
+    if (AbilitySystemComponent->HasMatchingGameplayTag(grabbingTagB))
     {
         PhysicsHandle->ReleaseItem();
-        SetActionType(EActionType::ENone);
+        AbilitySystemComponent->RemoveLooseGameplayTag(grabbingTagB);
+        AbilitySystemComponent->RemoveLooseGameplayTag(rotatingTagB);
     }
     else if (!InteractibleActive.IsValid())
     {
@@ -293,7 +317,7 @@ void ASKPlayerCharacter::TakeItem()
     }
     else
     {
-        ASKBaseCharacter::TakeItem();
+        ASKBaseCharacter::Interact();
         if (PlayerController->GetPlayerHUD()->IsInventoryOpen())
             PlayerController->GetPlayerHUD()->GetInventoryWidget()->UpdateInventoryWidget();
     }
@@ -322,7 +346,9 @@ bool ASKPlayerCharacter::CanGrabItem()
 {
     if (!InteractibleActive.IsValid()) return false;
 
-    if (GetActionType() == EActionType::ENone && InteractibleActive->GetRootComponent()->IsSimulatingPhysics())
+    if (AbilitySystemComponent->HasMatchingGameplayTag(canInteractTagB) &&
+        !AbilitySystemComponent->HasMatchingGameplayTag(grabbingTagB) &&
+        InteractibleActive->GetRootComponent()->IsSimulatingPhysics()) // TODO: Check by interface in the future
     {
         return true;
     }
@@ -336,24 +362,27 @@ void ASKPlayerCharacter::HandleGrabbing()
 {
     if (CanGrabItem())
     {
-        SetActionType(EActionType::EGrabbing);
+        AbilitySystemComponent->CheckAndAddGameplayTag(grabbingTagB);
         PhysicsHandle->GrabItem();
     }
     else if (!CanGrabItem() && PhysicsHandle->GetItemToGrab())
     {
+        AbilitySystemComponent->CheckAndRemoveGameplayTag(grabbingTagB);
+        AbilitySystemComponent->CheckAndRemoveGameplayTag(rotatingTagB);
         PhysicsHandle->ReleaseItem();
     }
 }
 
 void ASKPlayerCharacter::HandleAlternativeAction()
 {
-    if (GetActionType() == EActionType::EGrabbing)
+    if (AbilitySystemComponent->HasMatchingGameplayTag(grabbingTagB) &&
+        !AbilitySystemComponent->HasMatchingGameplayTag(rotatingTagB))
     {
-        SetActionType(EActionType::ERotating);
+        AbilitySystemComponent->AddLooseGameplayTag(rotatingTagB);
     }
-    else if (GetActionType() == EActionType::ERotating)
+    else if (AbilitySystemComponent->HasMatchingGameplayTag(rotatingTagB))
     {
-        SetActionType(EActionType::EGrabbing);
+        AbilitySystemComponent->RemoveLooseGameplayTag(rotatingTagB);
     }
     else
     {

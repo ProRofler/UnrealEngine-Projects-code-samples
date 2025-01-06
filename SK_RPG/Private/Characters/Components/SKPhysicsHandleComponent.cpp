@@ -1,14 +1,23 @@
 // Copyright (c) 2024. Sir Knight title is a property of Quantinum ltd. All rights reserved.
 
 #include "Characters/Components/SKPhysicsHandleComponent.h"
+#include "AbilitySystemComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Characters/SKPlayerCharacter.h"
 
-USKPhysicsHandleComponent::USKPhysicsHandleComponent() { Player = Cast<ASKPlayerCharacter>(GetOwner()); }
+static const auto grabbingTagP = FGameplayTag::RequestGameplayTag("Character.State.Action.Grabbing");
+static const auto rotatingTagP = FGameplayTag::RequestGameplayTag("Character.State.Action.Rotating");
+
+void USKPhysicsHandleComponent::BeginPlay()
+{
+    Super::BeginPlay();
+
+    Player = Cast<ASKPlayerCharacter>(GetOwner());
+}
 
 void USKPhysicsHandleComponent::GrabItem()
 {
-    if (!(Player->GetInteractibleActive().IsValid())) return;
+    if (!(Player->GetInteractibleActive())) return;
 
     ItemToGrab = Player->GetInteractibleActive()->FindComponentByClass<UMeshComponent>();
     if (!ItemToGrab) return;
@@ -27,14 +36,13 @@ void USKPhysicsHandleComponent::GrabItem()
 
     InitialRelativeRotation = ItemToGrab->GetComponentRotation() - Player->GetActorRotation();
 
-    Player->StartWalking();
-    Player->SetActionType(EActionType::EGrabbing);
+    Player->TryWalking();
     Async(EAsyncExecution::ThreadIfForkSafe, [&]() { UpdateGrabLocation(); });
 }
 
 void USKPhysicsHandleComponent::UpdateGrabLocation()
 {
-    while (Player->GetActionType() == EActionType::EGrabbing || Player->GetActionType() == EActionType::ERotating)
+    while (Player->GetAbilitySystemComponent()->HasMatchingGameplayTag(grabbingTagP))
     {
         if (IsValid(ItemToGrab) && GetWorld())
         {
@@ -47,7 +55,7 @@ void USKPhysicsHandleComponent::UpdateGrabLocation()
                 GrabLocation = HitResult_loc.TraceEnd;
             SetTargetLocation(GrabLocation);
 
-            if (!(Player->GetActionType() == EActionType::ERotating))
+            if (!(Player->GetAbilitySystemComponent()->HasMatchingGameplayTag(rotatingTagP)))
             {
                 FRotator PlayerRotation = Player->GetActorRotation();
                 FRotator NewRotation = PlayerRotation + InitialRelativeRotation;
@@ -98,6 +106,5 @@ void USKPhysicsHandleComponent::ReleaseItem()
     GetItemToGrab()->SetUseCCD(false);
     ItemToGrab = nullptr;
     InitialRelativeRotation = FRotator::ZeroRotator;
-    Player->SetActionType(EActionType::ENone);
-    Player->StartRunning();
+    Player->TryRunning();
 }

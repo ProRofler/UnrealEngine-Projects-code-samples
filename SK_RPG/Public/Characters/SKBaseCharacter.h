@@ -44,33 +44,26 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     void OnOverlapEnd(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp,
                       int32 OtherBodyIndex);
 
-    /************************************ GETTERS ******************************************/
-  public:
-    UFUNCTION(BlueprintCallable)
-    bool GetWantsTosprint() const { return bWantsToSprint; }
-    UFUNCTION(BlueprintCallable)
-    bool GetWalkToggle() const { return bWalkToggle; }
-    EActionType GetActionType() const { return ActionType; }
-    EMovementType GetMovementType() const { return MovementType; }
-    const TWeakObjectPtr<AActor> &GetInteractibleActive() const { return InteractibleActive; }
-    const TObjectPtr<USKInventoryComponent> &GetInventoryComponent() { return Inventory; }
-    virtual UAbilitySystemComponent *GetAbilitySystemComponent() const override;
-
-    /************************************ SETTERS ******************************************/
-    void SetActionType(const EActionType _ActionType) { ActionType = _ActionType; }
-
     /************************************ MOVEMENT  ******************************************/
   public:
     UFUNCTION(BlueprintCallable)
-    void StartSrinting() const;
+    void TrySrinting() const;
     UFUNCTION(BlueprintCallable)
-    void StartRunning() const;
+    void TryRunning() const;
+    UFUNCTION(BlueprintCallable)
+    void TryWalking();
 
-    // old
-    void StartWalking();
-    void StartRunning();
+    /************************************ State  ******************************************/
+  protected:
+    void HandleIdling();
+
+    bool bIsReceivingInput = false;
 
     /************************************ Interactions  ******************************************/
+  public:
+    UFUNCTION(BlueprintCallable)
+    const AActor *GetInteractibleActive() const { return InteractibleActive.Get(); }
+
   protected:
     UPROPERTY(BlueprintReadWrite)
     TObjectPtr<UCapsuleComponent> InteractionZone;
@@ -83,7 +76,7 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
 
     void HandleInteractionsTimer();
     virtual void HandleInteractionActor();
-    virtual void TakeItem();
+    virtual void Interact();
 
     /************************************ MULTITHREADING  ******************************************/
   protected:
@@ -92,6 +85,10 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     void AsyncInteractionHandle();
 
     /************************************ COMPONENTS  ******************************************/
+  public:
+    const TObjectPtr<USKInventoryComponent> &GetInventoryComponent() { return Inventory; }
+    virtual UAbilitySystemComponent *GetAbilitySystemComponent() const override;
+
   protected:
     TObjectPtr<USKCharacterMovementComponent> MovementComponent;
 
@@ -104,12 +101,4 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
   public:
     void ActivateSprintAbility();
 
-    /************************************ MISC\DEPRECATED  ******************************************/
-  public:
-    EMovementType MovementType = EMovementType::ERunning;
-    EActionType ActionType = EActionType::ENone;
-
-  private:
-    bool bWantsToSprint = false;
-    bool bWalkToggle = false;
 };

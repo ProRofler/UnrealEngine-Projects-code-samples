@@ -52,6 +52,32 @@ bool USKAbilitySystemComponent::CancelAbilityByClass(
     return false;
 }
 
+bool USKAbilitySystemComponent::CheckAndAddGameplayTag(const FGameplayTag &Tag)
+{
+    if (HasMatchingGameplayTag(Tag))
+    {
+        return false;
+    }
+    else
+    {
+        AddLooseGameplayTag(Tag);
+        return true;
+    }
+}
+
+bool USKAbilitySystemComponent::CheckAndRemoveGameplayTag(const FGameplayTag &Tag)
+{
+    if (HasMatchingGameplayTag(Tag))
+    {
+        RemoveLooseGameplayTag(Tag);
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 void USKAbilitySystemComponent::InitAbilities()
 {
     InitAbilityActorInfo(GetOwner(), GetOwner());
@@ -68,6 +94,19 @@ void USKAbilitySystemComponent::InitAbilities()
         UE_LOGFMT(
             LogSKAbilitySystem, Warning,
             "Actor '{ActorName}' sprinting ability was not assigned! Basic ability was assigned automatically instead.",
+            ("ActorName", GetOwner()->GetName()));
+    }
+
+    if (InteractAbility)
+    {
+        GiveAbility(FGameplayAbilitySpec(InteractAbility, 1, 0));
+    }
+    else
+    {
+        SprintingAbility = USKAbilityBase::StaticClass();
+        UE_LOGFMT(
+            LogSKAbilitySystem, Warning,
+            "Actor '{ActorName}' interact ability was not assigned! Basic ability was assigned automatically instead.",
             ("ActorName", GetOwner()->GetName()));
     }
 

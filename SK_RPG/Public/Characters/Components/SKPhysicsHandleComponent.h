@@ -14,14 +14,15 @@ class SIRKNIGHT_API USKPhysicsHandleComponent : public UPhysicsHandleComponent
     GENERATED_BODY()
 
   public:
-    USKPhysicsHandleComponent();
-
     // getters
     const TObjectPtr<UMeshComponent> &GetItemToGrab() const { return ItemToGrab; }
 
     void GrabItem();
     void ReleaseItem();
     void RotateGrabbedComponent(const FVector2D &Input);
+
+  protected:
+    virtual void BeginPlay() override;
 
   private:
     void UpdateGrabLocation();

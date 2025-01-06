@@ -45,7 +45,7 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
 
     // interactions
     virtual void HandleInteractionActor() override;
-    virtual void TakeItem() override;
+    virtual void Interact() override;
     void DropItem(AActor *ItemToDrop);
 
     UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Interactions settings")

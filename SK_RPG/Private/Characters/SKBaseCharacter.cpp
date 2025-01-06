@@ -6,6 +6,7 @@
 #include "Characters/Components/SKInventoryComponent.h"
 #include "Characters/Components/SKStateMachineComponent.h"
 #include "Components/CapsuleComponent.h"
+#include "Core/Interface/SKInterfaceCollectible.h"
 #include "Core/Interface/SKInterfaceInteractable.h"
 #include "Core/SKLogCategories.h"
 #include "Gameplay/GAS/Abilities/SKAbilityBase.h"
@@ -13,6 +14,9 @@
 #include "Gameplay/GAS/SKAttributeSet.h"
 #include "Gameplay/GAS/SKAttributeSetSkills.h"
 #include "Logging/StructuredLog.h"
+
+static const auto wantsToSprintTagA = FGameplayTag::RequestGameplayTag("Character.Request.Movement.WantsToSprint");
+static const auto grabbingTagA = FGameplayTag::RequestGameplayTag("Character.State.Action.Grabbing");
 
 ASKBaseCharacter::ASKBaseCharacter(const FObjectInitializer &ObjectInitializer)
     : Super(ObjectInitializer.SetDefaultSubobjectClass<USKCharacterMovementComponent>(
@@ -48,7 +52,6 @@ void ASKBaseCharacter::BeginPlay()
     check(InteractionZone);
     check(MovementComponent);
     check(AbilitySystemComponent);
-    // check(AttributeSet);
 
     if (IsValid(AbilitySystemComponent))
     {
@@ -56,10 +59,14 @@ void ASKBaseCharacter::BeginPlay()
         AttributeSetSkills = AbilitySystemComponent->GetSet<USKAttributeSetSkills>();
     }
 
-    MovementType = EMovementType::ERunning;
+    TryRunning();
 }
 
-void ASKBaseCharacter::Tick(float DeltaTime) { Super::Tick(DeltaTime); }
+void ASKBaseCharacter::Tick(float DeltaTime)
+{
+    Super::Tick(DeltaTime);
+    HandleIdling();
+}
 
 void ASKBaseCharacter::OnBeginOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor,
                                       UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep,
@@ -98,22 +105,14 @@ UAbilitySystemComponent *ASKBaseCharacter::GetAbilitySystemComponent() const
 
 void ASKBaseCharacter::ActivateSprintAbility()
 {
-    /*
-    if (GetActionType() == EActionType::EGrabbing || GetActionType() == EActionType::ERotating) return;
 
-    bWalkToggle = false;
-    bWantsToSprint = true;
-    MovementType = EMovementType::ESprinting;
-    MovementComponent->SetCharacterSpeed(MovementType);
-    */
+    if (AbilitySystemComponent->HasMatchingGameplayTag(grabbingTagA)) return;
 
-    auto wantToSprintTag = FGameplayTag::RequestGameplayTag("Character.Request.Movement.WantsToSprint");
-    const auto tagContainer = wantToSprintTag.GetSingleTagContainer();
-
-    if (!AbilitySystemComponent->HasMatchingGameplayTag(wantToSprintTag))
+    const auto wantsToSpringTagContainer = wantsToSprintTagA.GetSingleTagContainer();
+    if (!AbilitySystemComponent->HasMatchingGameplayTag(wantsToSprintTagA))
     {
-        AbilitySystemComponent->AddLooseGameplayTag(wantToSprintTag);
-        AbilitySystemComponent->TryActivateAbilitiesByTag(tagContainer);
+        AbilitySystemComponent->AddLooseGameplayTag(wantsToSprintTagA);
+        AbilitySystemComponent->TryActivateAbilitiesByTag(wantsToSpringTagContainer);
 
         UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' wants to sprint",
                   ("ActorName", this->GetName()));
@@ -121,8 +120,8 @@ void ASKBaseCharacter::ActivateSprintAbility()
     else
     {
 
-        AbilitySystemComponent->RemoveLooseGameplayTag(wantToSprintTag);
-        AbilitySystemComponent->CancelAbilities(&tagContainer);
+        AbilitySystemComponent->RemoveLooseGameplayTag(wantsToSprintTagA);
+        AbilitySystemComponent->CancelAbilities(&wantsToSpringTagContainer);
 
         UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' no loger wants to sprint",
                   ("ActorName", this->GetName()));
@@ -131,35 +130,91 @@ void ASKBaseCharacter::ActivateSprintAbility()
 
 /************************************ MOVEMENT  ******************************************/
 
-void ASKBaseCharacter::StartSrinting() const { MovementComponent->StartSprinting(); }
+void ASKBaseCharacter::TrySrinting() const { MovementComponent->StartSprinting(); }
 
-void ASKBaseCharacter::StartRunning() const { MovementComponent->StartRunning(); }
-
-// OLD
-void ASKBaseCharacter::StartWalking()
+void ASKBaseCharacter::TryWalking()
 {
-    if (bWantsToSprint || GetActionType() == EActionType::ERotating || GetActionType() == EActionType::EGrabbing)
+    if (AbilitySystemComponent->HasMatchingGameplayTag(grabbingTagA)) return;
+
+    if (AbilitySystemComponent->HasMatchingGameplayTag(
+            FGameplayTag::RequestGameplayTag("Character.Request.Movement.WantsToSprint")))
         return;
 
-    if (bWalkToggle)
+    const auto idleTag = FGameplayTag::RequestGameplayTag("Character.State.Movement.Idle");
+    if (AbilitySystemComponent->HasMatchingGameplayTag(idleTag))
     {
-        bWalkToggle = false;
-        StartRunning();
-        return;
+        AbilitySystemComponent->RemoveLooseGameplayTag(idleTag);
     }
 
-    bWalkToggle = true;
-    MovementType = EMovementType::EWalking;
-    MovementComponent->SetCharacterSpeed(MovementType);
+    const auto walkTag = FGameplayTag::RequestGameplayTag("Character.State.Movement.Walking");
+    if (!AbilitySystemComponent->HasMatchingGameplayTag(walkTag))
+    {
+        AbilitySystemComponent->AddLooseGameplayTag(walkTag);
+        MovementComponent->StartWalking();
+
+        const auto runTag = FGameplayTag::RequestGameplayTag("Character.State.Movement.Running");
+        if (AbilitySystemComponent->HasMatchingGameplayTag(runTag))
+        {
+            AbilitySystemComponent->RemoveLooseGameplayTag(runTag);
+        }
+
+        UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' is now walking",
+                  ("ActorName", this->GetName()));
+    }
+    else
+    {
+        AbilitySystemComponent->RemoveLooseGameplayTag(walkTag);
+        TryRunning();
+    }
 }
 
-void ASKBaseCharacter::StartRunning()
+void ASKBaseCharacter::TryRunning() const
 {
-    bWalkToggle = false;
-    bWantsToSprint = false;
+    const auto runTag = FGameplayTag::RequestGameplayTag("Character.State.Movement.Running");
+    if (AbilitySystemComponent->HasMatchingGameplayTag(runTag)) return;
 
-    MovementType = EMovementType::ERunning;
-    MovementComponent->SetCharacterSpeed(MovementType);
+    const auto walkTag = FGameplayTag::RequestGameplayTag("Character.State.Movement.Walking");
+    if (AbilitySystemComponent->HasMatchingGameplayTag(walkTag))
+    {
+        AbilitySystemComponent->RemoveLooseGameplayTag(walkTag);
+    }
+
+    const auto idleTag = FGameplayTag::RequestGameplayTag("Character.State.Movement.Idle");
+    if (AbilitySystemComponent->HasMatchingGameplayTag(idleTag))
+    {
+        AbilitySystemComponent->RemoveLooseGameplayTag(idleTag);
+    }
+
+    MovementComponent->StartRunning();
+    AbilitySystemComponent->AddLooseGameplayTag(runTag);
+
+    UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' is now running", ("ActorName", this->GetName()));
+}
+
+/************************************ STATE  ******************************************/
+
+void ASKBaseCharacter::HandleIdling()
+{
+    const auto idleTag = FGameplayTag::RequestGameplayTag("Character.State.Movement.Idle");
+
+    if (!bIsReceivingInput && GetVelocity().IsNearlyZero())
+    {
+        if (!AbilitySystemComponent->HasMatchingGameplayTag(idleTag))
+        {
+            AbilitySystemComponent->AddLooseGameplayTag(idleTag);
+            UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' is now idling",
+                      ("ActorName", this->GetName()));
+        }
+    }
+    else
+    {
+        if (AbilitySystemComponent->HasMatchingGameplayTag(idleTag))
+        {
+            AbilitySystemComponent->RemoveLooseGameplayTag(idleTag);
+            UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' is no longer idling",
+                      ("ActorName", this->GetName()));
+        }
+    }
 }
 
 //************************** MULTITHREADING **************************
@@ -195,9 +250,34 @@ void ASKBaseCharacter::HandleInteractionActor()
     // TODO: AI interaction logic
 }
 
-void ASKBaseCharacter::TakeItem()
+void ASKBaseCharacter::Interact()
 {
-    if (!InteractibleActive.IsValid()) return;
+    if (!InteractibleActive.IsValid() || !AbilitySystemComponent->InteractAbility) return;
 
-    Inventory->AddToInventory(InteractibleActive.Get());
+    const auto canInteractTag = FGameplayTag::RequestGameplayTag("Character.State.Action.CanInteract");
+    const auto wantToInteractTag = FGameplayTag::RequestGameplayTag("Character.Request.Action.WantsToInteract");
+
+    if (AbilitySystemComponent->HasMatchingGameplayTag(canInteractTag))
+    {
+
+        UE_LOGFMT(LogSKAbilitySystem, Display, "'{ActorName}' tried to interact with '{InteractableName}'!",
+                  ("ActorName", this->GetName()), ("InteractableName", InteractibleActive->GetName()));
+
+        AbilitySystemComponent->CheckAndAddGameplayTag(wantToInteractTag);
+        if (InteractibleActive->Implements<USKInterfaceCollectible>())
+        {
+            Inventory->AddToInventory(InteractibleActive.Get());
+        }
+
+        if (!AbilitySystemComponent->TryActivateAbilitiesByTag(wantToInteractTag.GetSingleTagContainer()))
+        {
+            UE_LOGFMT(LogSKAbilitySystem, Error,
+                      "Actor '{ActorName}' interact ability was not activated for unknown reasons!",
+                      ("ActorName", this->GetName()));
+        }
+    }
+    else
+    {
+        AbilitySystemComponent->CheckAndRemoveGameplayTag(wantToInteractTag);
+    }
 }
