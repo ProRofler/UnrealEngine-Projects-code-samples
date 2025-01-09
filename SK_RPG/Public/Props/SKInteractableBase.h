@@ -3,9 +3,9 @@
 #pragma once
 
 #include "Core/Interface/SKInterfaceInteractable.h"
-#include "Core/SKCoreTypes.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+
 #include "SKInteractableBase.generated.h"
 
 class UCapsuleComponent;
@@ -19,9 +19,6 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
     ASKInteractableBase();
     virtual void Tick(float DeltaTime) override;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interactable object main properties")
-    FInteractableProperties MainProperties;
-
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Object settings")
     TObjectPtr<UStaticMeshComponent> BaseMesh;
 
@@ -29,10 +26,11 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
 
     // getters
     UFUNCTION(BlueprintCallable)
-    FName GetInGameName() const { return MainProperties.InGameName; }
+    FName GetInGameName() const { return InGameName; }
 
   protected:
     virtual void BeginPlay() override;
 
-  private:
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Base properties | Interactables")
+    FName InGameName = TEXT("_DEFAULT_NAME_");
 };

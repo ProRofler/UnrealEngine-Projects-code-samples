@@ -19,6 +19,9 @@ class UAttributeSet;
 class USKAbilitySystemComponent;
 class UGameplayAbility;
 
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStartedSprinting);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStartedRunning);
+
 UCLASS()
 class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCharacter, public IAbilitySystemInterface
 {
@@ -52,6 +55,13 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     void TryRunning() const;
     UFUNCTION(BlueprintCallable)
     void TryWalking();
+    UFUNCTION(BlueprintPure, Category = "Character movement")
+    float GetCharacterMovementAngle();
+
+    UPROPERTY(BlueprintAssignable, Category = "Events")
+    FOnStartedSprinting OnStartedSprinting;
+    UPROPERTY(BlueprintAssignable, Category = "Events")
+    FOnStartedRunning OnStartedRunning;
 
     /************************************ State  ******************************************/
   protected:
@@ -101,4 +111,7 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
   public:
     void ActivateSprintAbility();
 
+    /************************************ DEBUGGING  ******************************************/
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DEBUGGING")
+    bool bEnableLogging = true;
 };

@@ -23,8 +23,6 @@ class SIRKNIGHT_API USKInventoryWidget : public UUserWidget
     UFUNCTION(BlueprintCallable, Category = "Inventory widget")
     void HandleInventoryOpen();
 
-    void SetPendingUpdate(const bool value) { bIsPendingUpdate = value; }
-
     UFUNCTION(BlueprintCallable, Category = "Inventory widget")
     void UpdateInventoryWidget();
 
@@ -33,20 +31,19 @@ class SIRKNIGHT_API USKInventoryWidget : public UUserWidget
     TObjectPtr<UListView> InventoryList;
 
     UFUNCTION()
-    void HandleDropItem(AActor *ItemData, const USKItemListEntry *ListEntry);
-
-    UPROPERTY(BlueprintReadWrite)
-    bool bIsPendingUpdate = true;
+    void HandleDropItem(const USKItemListEntry *ListEntry, const int32 QuantityToDrop);
 
   private:
+    bool bIsPendingUpdate = true;
+
     ASKPlayerCharacter *Player;
 
     ASKPlayerCharacter *GetOwningCharacter();
     void InitDelegates();
 
-    TObjectPtr<USKInventoryObjectData> CreateInventoryObjectDataItem(const AActor *Item);
     void HandleEntryWidgetGenerated(UUserWidget &EntryWidget);
     void HandleEntryWidgetReleased(UUserWidget &EntryWidget);
+
     UFUNCTION()
-    void HandleInventoryChanged() { bIsPendingUpdate = true; }
+    void MarkForUpdate() { bIsPendingUpdate = true; }
 };

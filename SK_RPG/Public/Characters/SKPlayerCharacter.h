@@ -12,6 +12,7 @@ class ASKPlayerController;
 class ASKPlayerHUD;
 class USKInventoryWidget;
 class USKPhysicsHandleComponent;
+class USKInventoryObjectData;
 
 UCLASS()
 class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
@@ -46,7 +47,7 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
     // interactions
     virtual void HandleInteractionActor() override;
     virtual void Interact() override;
-    void DropItem(AActor *ItemToDrop);
+    void DropItem(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop);
 
     UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Interactions settings")
     float GrabDistance = 150.0f;

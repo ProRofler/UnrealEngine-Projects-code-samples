@@ -6,6 +6,7 @@
 #include "Core/SKLogCategories.h"
 #include "Logging/StructuredLog.h"
 #include "Props/SKCollectible.h"
+#include "UI/Data/SKInventoryObjectData.h"
 
 /********************* DEFAULT *********************/
 USKInventoryComponent::USKInventoryComponent() { PrimaryComponentTick.bCanEverTick = false; }
@@ -20,12 +21,19 @@ void USKInventoryComponent::BeginPlay()
 /********************* Items handling *********************/
 void USKInventoryComponent::AddToInventory(AActor *PickedItem)
 {
-    // TODO: stacking logic
+    auto itemData = CreateInventoryObjectDataItem(PickedItem);
 
-    if (!PickedItem) return;
+    if (auto item = FindInventoryItem(itemData))
+    {
+        UE_LOG(LogTemp, Display, TEXT("Found in inventory"));
+        item->IncreaseItemQuantity(itemData->GetItemQuantity());
+    }
+    else
+    {
+        InventoryData.Add(itemData);
+        UE_LOG(LogTemp, Display, TEXT("Not found in inventory"));
+    }
 
-    InventoryData.Add(PickedItem);
-    ISKInterfaceInteractable::Execute_OnInteraction(PickedItem, OwningCharacter);
     SortInventory();
 
     if (OnInventoryUpdated.IsBound())
@@ -38,50 +46,68 @@ void USKInventoryComponent::AddToInventory(AActor *PickedItem)
         return;
     }
 
-    /** LOG **/
-    UE_LOGFMT(LogSKInteractions, Display, "Actor: {0} picked up item: {1}", this->GetName(), PickedItem->GetName());
+    UE_LOGFMT(LogSKInteractions, Display, "Actor: {0} picked up item: \"{1}\", of class: {2}",
+              OwningCharacter->GetName(), itemData->GetItemName(), itemData->GetItemClass()->GetName());
 }
 
-void USKInventoryComponent::RemoveFromInventory(AActor *ItemToRemove)
+void USKInventoryComponent::RemoveFromInventory(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop)
 {
     if (!ItemToRemove) return;
 
-    if (OnItemPickup.IsBound())
+    if (ItemToRemove->GetItemQuantity() - QuantityToDrop <= 0)
     {
-        OnItemPickup.RemoveAll(ItemToRemove);
-    }
 
-    if (ItemToRemove->Implements<USKInterfaceInteractable>())
-    {
-        ISKInterfaceInteractable::Execute_OnInteraction(ItemToRemove, OwningCharacter);
+        if (OnItemPickup.IsBound())
+        {
+            OnItemPickup.RemoveAll(ItemToRemove);
+        }
+
+        InventoryData.Remove(ItemToRemove);
     }
     else
     {
-        checkNoEntry();
+        auto i = InventoryData.Find(ItemToRemove);
+        InventoryData[i]->DecreaseItemQuantity(QuantityToDrop);
     }
-
-    InventoryData.Remove(ItemToRemove);
 
     OnInventoryUpdated.ExecuteIfBound();
 
-    // LOG
     UE_LOGFMT(LogSKInteractions, Display, "Actor: {0} Dropped item: {1}", this->GetName(), ItemToRemove->GetName());
+}
+
+TObjectPtr<USKInventoryObjectData> USKInventoryComponent::CreateInventoryObjectDataItem(const AActor *Item)
+{
+    if (!Item) return nullptr;
+
+    auto originaItem = Cast<ASKCollectible>(Item);
+    if (!originaItem) return nullptr;
+
+    if (TObjectPtr<USKInventoryObjectData> newInventoryItem = NewObject<USKInventoryObjectData>(this))
+    {
+        newInventoryItem->InitializeItemData(originaItem->GetInGameName(), originaItem->GetItemQuantity(),
+                                             originaItem->GetClass());
+        return newInventoryItem;
+    }
+    else
+    {
+        UE_LOGFMT(LogSKInteractions, Display, "Actor: {0} failed to generate inventory item: \"{1}\", of class: {2}",
+                  OwningCharacter->GetName(), originaItem->GetName(), originaItem->GetClass()->GetName());
+        return nullptr;
+    }
 }
 
 void USKInventoryComponent::SortInventory()
 {
+    UE_LOG(LogTemp, Display, TEXT("Attempting to sort the inventory"));
 
-    InventoryData.Sort([](const TWeakObjectPtr<AActor> &A, const TWeakObjectPtr<AActor> &B) {
-        auto Acast = Cast<ASKCollectible>(A.Get());
-        auto Bcast = Cast<ASKCollectible>(B.Get());
-
-        if (Acast && Bcast)
+    InventoryData.Sort([](const TObjectPtr<USKInventoryObjectData> &A, const TObjectPtr<USKInventoryObjectData> &B) {
+        if (A && B)
         {
-            return Acast->GetInGameName().LexicalLess(Bcast->GetInGameName());
+            return A->GetItemName().LexicalLess(B->GetItemName());
         }
         else
         {
-            return Acast != nullptr;
+            return A != nullptr;
         }
     });
 }
@@ -98,4 +124,17 @@ ASKBaseCharacter *USKInventoryComponent::GetOwningCharacter()
 void USKInventoryComponent::InitDelegates()
 {
     // OwningCharacter->OnItemPickup.AddDynamic(this, &USKInventoryComponent::AddToInventory);
+}
+
+TObjectPtr<USKInventoryObjectData> USKInventoryComponent::FindInventoryItem(
+    const USKInventoryObjectData *ObjectData) const
+{
+    for (auto &Data : InventoryData)
+    {
+        if (ObjectData->GetItemClass() == Data->GetItemClass())
+        {
+            return Data;
+        }
+    }
+    return nullptr;
 }

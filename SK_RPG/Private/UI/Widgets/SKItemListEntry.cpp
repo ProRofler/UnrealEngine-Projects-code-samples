@@ -2,6 +2,8 @@
 
 #include "UI/Widgets/SKItemListEntry.h"
 #include "Components/Button.h"
+#include "Core/SKLogCategories.h"
+#include "Logging/StructuredLog.h"
 #include "UI/Data/SKInventoryObjectData.h"
 
 void USKItemListEntry::NativeOnListItemObjectSet(UObject *ListItemObject)
@@ -10,21 +12,30 @@ void USKItemListEntry::NativeOnListItemObjectSet(UObject *ListItemObject)
     {
         if (TXT_Item_Name)
         {
-            TXT_Item_Name->SetText(FText::FromName(DataObject->InventoryItemData.Name));
+            TXT_Item_Name->SetText(FText::FromName(DataObject->GetItemName()));
+        }
+        if (TXT_Item_Quantity)
+        {
+            TXT_Item_Quantity->SetText(FText::AsNumber(DataObject->GetItemQuantity()));
         }
         if (BTN_Drop_Button)
         {
             BTN_Drop_Button->OnClicked.AddDynamic(this, &USKItemListEntry::HandleItemDrop);
         }
-        ItemData = DataObject->ItemData;
+        InventoryItemData = DataObject;
+
+        UE_LOGFMT(LogSKInteractions, Display, "Added list entry: \"{0}\", with Item {1} of quantity {2}",
+                  this->GetName(), DataObject->GetItemName(), FString::FormatAsNumber(DataObject->GetItemQuantity()));
     }
 }
 
 void USKItemListEntry::HandleItemDrop()
 {
-    if (ItemData && OnItemDropCalled.IsBound())
+    UE_LOG(LogTemp, Display, TEXT("Trying to drop"));
+
+    if (OnItemDropCalled.IsBound())
     {
-        OnItemDropCalled.Broadcast(ItemData, this);
+        OnItemDropCalled.Broadcast(this, 1);
     }
 }
 

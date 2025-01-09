@@ -24,4 +24,4 @@ void USKCharacterMovementComponent::StartRunning() { MaxWalkSpeed = BaseWalkSpee
 
 void USKCharacterMovementComponent::StartSprinting() { MaxWalkSpeed = (BaseWalkSpeed * 2.0f) * (Athletics / 100.0f); }
 
-void USKCharacterMovementComponent::StartWalking() { MaxWalkSpeed = 120.0f; }
+void USKCharacterMovementComponent::StartWalking() { MaxWalkSpeed = 120.0f;  }

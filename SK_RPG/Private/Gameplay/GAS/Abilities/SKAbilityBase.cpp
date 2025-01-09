@@ -12,9 +12,9 @@ void USKAbilityBase::OnGiveAbility(const FGameplayAbilityActorInfo *ActorInfo, c
     Super::OnGiveAbility(ActorInfo, Spec);
 
     // Get Reference to owning char
-    if (const FGameplayAbilityActorInfo *ActorInfo = GetCurrentActorInfo())
+    if (const FGameplayAbilityActorInfo *OwnerActorInfo = GetCurrentActorInfo())
     {
-        OwnerCharacter = Cast<ASKBaseCharacter>(ActorInfo->AvatarActor);
+        OwnerCharacter = Cast<ASKBaseCharacter>(OwnerActorInfo->AvatarActor);
     }
 }
 
@@ -28,7 +28,9 @@ void USKAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
         EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
     }
 
-    UE_LOGFMT(LogSKAbilitySystem, Display, "Ability'{AbilityName}' was activated", ("AbilityName", this->GetName()));
+    if (bEnableLogging)
+        UE_LOGFMT(LogSKAbilitySystem, Display, "Ability'{AbilityName}' was activated",
+                  ("AbilityName", this->GetName()));
 
     Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 }
@@ -37,7 +39,9 @@ void USKAbilityBase::EndAbility(const FGameplayAbilitySpecHandle Handle, const F
                                 const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility,
                                 bool bWasCancelled)
 {
-    UE_LOGFMT(LogSKAbilitySystem, Display, "Ability'{AbilityName}' was deactivated", ("AbilityName", this->GetName()));
+    if (bEnableLogging)
+        UE_LOGFMT(LogSKAbilitySystem, Display, "Ability'{AbilityName}' was deactivated",
+                  ("AbilityName", this->GetName()));
 
     Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
 }

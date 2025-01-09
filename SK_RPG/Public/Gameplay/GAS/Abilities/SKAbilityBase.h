@@ -30,6 +30,10 @@ class SIRKNIGHT_API USKAbilityBase : public UGameplayAbility
                             const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility,
                             bool bWasCancelled);
 
+  protected:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "DEBUGGING")
+    bool bEnableLogging = false;
+
   private:
     ASKBaseCharacter *OwnerCharacter = nullptr;
 };

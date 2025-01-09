@@ -12,34 +12,5 @@ ASKCollectible::ASKCollectible()
 void ASKCollectible::OnInteraction_Implementation(const AActor *TriggeredActor)
 {
     if (!TriggeredActor) return;
-
-    switch (bIsInInventory)
-    {
-    case 0:
-        HideFromWorld();
-        bIsInInventory = true;
-        break;
-    default:
-        ShowInWorld();
-        bIsInInventory = false;
-        break;
-    }
-}
-
-void ASKCollectible::HideFromWorld()
-{
-    SetActorHiddenInGame(true);
-    BaseMesh->SetSimulatePhysics(false);
-    SetActorEnableCollision(false);
-
-    // ADD LOG
-}
-
-void ASKCollectible::ShowInWorld()
-{
-    BaseMesh->SetSimulatePhysics(true);
-    SetActorEnableCollision(true);
-    SetActorHiddenInGame(false);
-
-    // ADD LOG
+    Destroy();
 }

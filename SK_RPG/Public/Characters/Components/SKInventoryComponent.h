@@ -23,7 +23,7 @@ class SIRKNIGHT_API USKInventoryComponent : public UActorComponent
     UFUNCTION(BlueprintCallable, Category = "Inventory")
     void AddToInventory(AActor *PickedItem);
     UFUNCTION(BlueprintCallable, Category = "Inventory")
-    void RemoveFromInventory(AActor *ItemToRemove);
+    void RemoveFromInventory(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop);
     UFUNCTION(BlueprintCallable, Category = "Inventory")
     bool IsInventoryEmpty() const { return InventoryData.IsEmpty(); }
 
@@ -32,20 +32,21 @@ class SIRKNIGHT_API USKInventoryComponent : public UActorComponent
     UPROPERTY(BlueprintReadOnly, Category = "Interactions")
     FOnInventoryUpdated OnInventoryUpdated;
 
-    TArray<TWeakObjectPtr<AActor>> &GetInventoryData() { return InventoryData; }
-
-    UFUNCTION(BlueprintPure)
-    int32 GetInventorySize() { return InventoryData.Num(); }
+    TArray<TObjectPtr<USKInventoryObjectData>> &GetInventoryData() { return InventoryData; }
 
   protected:
     virtual void BeginPlay() override;
 
   private:
-    TArray<TWeakObjectPtr<AActor>> InventoryData;
+    TArray<TObjectPtr<USKInventoryObjectData>> InventoryData;
     ASKBaseCharacter *OwningCharacter = nullptr;
+
+    TObjectPtr<USKInventoryObjectData> CreateInventoryObjectDataItem(const AActor *Item);
 
     void SortInventory();
 
     ASKBaseCharacter *GetOwningCharacter();
     void InitDelegates();
+
+    TObjectPtr<USKInventoryObjectData> FindInventoryItem(const USKInventoryObjectData *ObjectData) const;
 };

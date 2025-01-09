@@ -15,7 +15,6 @@ void ASKPlayerHUD::BeginPlay()
     if (InventoryWidget)
     {
         InventoryWidget->AddToViewport();
-        InventoryWidget->SetPendingUpdate(true);
         InventoryWidget->SetVisibility(ESlateVisibility::Hidden);
     }
     else

@@ -4,7 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "Core/SKCoreTypes.h"
+
 #include "SKCharacterMovementComponent.generated.h"
 
 UCLASS()
@@ -18,16 +18,12 @@ class SIRKNIGHT_API USKCharacterMovementComponent : public UCharacterMovementCom
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "__TEMP Skills")
     float Athletics = 35.0f;
-        
-    void StartRunning();
-    
-    void StartSprinting();
 
+    void StartRunning();
+    void StartSprinting();
     void StartWalking();
 
   protected:
-    
-
   private:
     float BaseWalkSpeed;
     AActor *Character = nullptr;

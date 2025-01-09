@@ -4,9 +4,7 @@
 #include "AbilitySystemComponent.h"
 #include "Camera/CameraComponent.h"
 #include "Characters/SKPlayerCharacter.h"
-
-static const auto grabbingTagP = FGameplayTag::RequestGameplayTag("Character.State.Action.Grabbing");
-static const auto rotatingTagP = FGameplayTag::RequestGameplayTag("Character.State.Action.Rotating");
+#include "Gameplay/GAS/SKCommonGameplayTagsLib.h"
 
 void USKPhysicsHandleComponent::BeginPlay()
 {
@@ -42,7 +40,7 @@ void USKPhysicsHandleComponent::GrabItem()
 
 void USKPhysicsHandleComponent::UpdateGrabLocation()
 {
-    while (Player->GetAbilitySystemComponent()->HasMatchingGameplayTag(grabbingTagP))
+    while (Player->GetAbilitySystemComponent()->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem()))
     {
         if (IsValid(ItemToGrab) && GetWorld())
         {
@@ -55,7 +53,8 @@ void USKPhysicsHandleComponent::UpdateGrabLocation()
                 GrabLocation = HitResult_loc.TraceEnd;
             SetTargetLocation(GrabLocation);
 
-            if (!(Player->GetAbilitySystemComponent()->HasMatchingGameplayTag(rotatingTagP)))
+            if (!(Player->GetAbilitySystemComponent()->HasMatchingGameplayTag(
+                    USKCommonGameplayTagsLib::GetTag_RotatingItem())))
             {
                 FRotator PlayerRotation = Player->GetActorRotation();
                 FRotator NewRotation = PlayerRotation + InitialRelativeRotation;

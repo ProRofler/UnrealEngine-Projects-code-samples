@@ -35,35 +35,41 @@ void USKInventoryWidget::UpdateInventoryWidget()
     if (!InventoryList) return;
 
     InventoryList->ClearListItems();
+    InventoryList->RegenerateAllEntries();
 
-    for (auto itemData : Player->GetInventoryComponent()->GetInventoryData())
+    if (InventoryList->GetListItems().IsEmpty())
     {
-        if (itemData.IsValid())
+
+        for (const auto &itemData : Player->GetInventoryComponent()->GetInventoryData())
         {
-            auto listEntryObjetData = CreateInventoryObjectDataItem(itemData.Get());
-            if (!listEntryObjetData) return;
-
-            InventoryList->AddItem(listEntryObjetData);
+            if (itemData)
+            {
+                InventoryList->AddItem(itemData);
+                UE_LOGFMT(LogSKInteractions, Display, "Parsed item: \"{1}\", of quantity {2} to list",
+                          itemData->GetItemName(), FString::FormatAsNumber(itemData->GetItemQuantity()));
+            }
         }
+        UE_LOG(LogSKUserInterface, Display, TEXT("Inventory list was succesfully updated"));
     }
-
-    // LOG
-    UE_LOG(LogSKUserInterface, Display, TEXT("Inventory list was succesfully updated"));
+    else
+    {
+        UE_LOG(LogSKUserInterface, Error, TEXT("Inventory list wasn't empty before populating"));
+    }
 }
 
 /********************** BACK ***********************/
-void USKInventoryWidget::HandleDropItem(AActor *ItemData, const USKItemListEntry *ListEntry)
+void USKInventoryWidget::HandleDropItem(const USKItemListEntry *ListEntry, const int32 QuantityToDrop)
 {
-    if (!ItemData || !ListEntry) return;
+    if (!ListEntry) return;
 
-    Player->DropItem(ItemData);
+    Player->DropItem(ListEntry->GetInventoryItemData(), QuantityToDrop);
     UpdateInventoryWidget();
     bIsPendingUpdate = false;
 
     UE_LOGFMT(LogSKInteractions, Display,
               "Item: {ItemDataName} drop call, from ListEntry: {ListEntryName} by: {ActorName}",
-              ("ItemDataName", ItemData->GetName()), ("ListEntryName", ListEntry->GetName()),
-              ("ActorName", Player->GetFName()));
+              ("ItemDataName", ListEntry->GetInventoryItemData()->GetItemName()),
+              ("ListEntryName", ListEntry->GetName()), ("ActorName", Player->GetFName()));
 }
 
 void USKInventoryWidget::HandleInventoryOpen()
@@ -73,25 +79,6 @@ void USKInventoryWidget::HandleInventoryOpen()
         UpdateInventoryWidget();
         bIsPendingUpdate = false;
     }
-}
-
-TObjectPtr<USKInventoryObjectData> USKInventoryWidget::CreateInventoryObjectDataItem(const AActor *Item)
-{
-    if (!Item) return nullptr;
-
-    TObjectPtr<USKInventoryObjectData> newInventoryItem = NewObject<USKInventoryObjectData>(this);
-    newInventoryItem->ItemData = const_cast<AActor *>(Item);
-
-    FInventoryItemData inventoryItemData;
-    auto originaItem = Cast<ASKCollectible>(Item);
-    if (!originaItem) return nullptr;
-
-    inventoryItemData.Name = originaItem->GetInGameName();
-    newInventoryItem->InventoryItemData = inventoryItemData;
-
-    return newInventoryItem;
-
-    return TObjectPtr<USKInventoryObjectData>();
 }
 
 void USKInventoryWidget::HandleEntryWidgetGenerated(UUserWidget &EntryWidget)
@@ -112,7 +99,7 @@ void USKInventoryWidget::HandleEntryWidgetReleased(UUserWidget &EntryWidget)
 /********************** UTILS ***********************/
 void USKInventoryWidget::InitDelegates()
 {
-    Player->GetInventoryComponent()->OnInventoryUpdated.BindDynamic(this, &USKInventoryWidget::HandleInventoryChanged);
+    Player->GetInventoryComponent()->OnInventoryUpdated.BindDynamic(this, &USKInventoryWidget::MarkForUpdate);
     InventoryList->OnEntryWidgetGenerated().AddUObject(this, &USKInventoryWidget::HandleEntryWidgetGenerated);
     InventoryList->OnEntryWidgetReleased().AddUObject(this, &USKInventoryWidget::HandleEntryWidgetReleased);
 }

@@ -2,9 +2,10 @@
 
 #pragma once
 
+#include "Core/Interface/SKInterfaceCollectible.h"
 #include "CoreMinimal.h"
 #include "Props/SKInteractableBase.h"
-#include "Core/Interface/SKInterfaceCollectible.h"
+
 #include "SKCollectible.generated.h"
 
 UCLASS()
@@ -14,17 +15,13 @@ class SIRKNIGHT_API ASKCollectible : public ASKInteractableBase, public ISKInter
 
   public:
     ASKCollectible();
-    bool bIsInInventory = false;
 
     UFUNCTION(BlueprintCallable)
-    int32 GetItemQuantity() const { return Quantity; }
+    const int32 &GetItemQuantity() const { return Quantity; }
 
     virtual void OnInteraction_Implementation(const AActor *TriggeredActor) override;
 
   protected:
-  private:
-    int32 Quantity;
-
-    void HideFromWorld();
-    void ShowInWorld();
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Base properties | Collectibles")
+    int32 Quantity = 1;
 };
