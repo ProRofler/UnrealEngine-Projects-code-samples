@@ -19,15 +19,23 @@ class SIRKNIGHT_API USKAttributeSet : public UAttributeSet
     GENERATED_BODY()
 
   public:
-    USKAttributeSet();
+    virtual void PostGameplayEffectExecute(const struct FGameplayEffectModCallbackData &Data) override;
 
     ATTRIBUTE_ACCESSORS(USKAttributeSet, Health);
+    ATTRIBUTE_ACCESSORS(USKAttributeSet, MaxHealth);
     ATTRIBUTE_ACCESSORS(USKAttributeSet, Stamina);
+    ATTRIBUTE_ACCESSORS(USKAttributeSet, MaxStamina);
 
   protected:
     UPROPERTY(BlueprintReadOnly, Category = "Main attributes")
     FGameplayAttributeData Health;
 
     UPROPERTY(BlueprintReadOnly, Category = "Main attributes")
+    FGameplayAttributeData MaxHealth;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Main attributes")
     FGameplayAttributeData Stamina;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Main attributes")
+    FGameplayAttributeData MaxStamina;
 };

@@ -4,21 +4,22 @@
 #include "Camera/CameraComponent.h"
 #include "Characters/Components/SKInventoryComponent.h"
 #include "Characters/Components/SKPhysicsHandleComponent.h"
-#include "Controllers/SKPlayerController.h"
 #include "Core/Interface/SKInterfaceInteractable.h"
 #include "Core/SKCoreTypes.h"
 #include "Core/SKLogCategories.h"
-#include "EnhancedInputComponent.h"
-#include "EnhancedInputSubsystems.h"
 #include "Gameplay/GAS/SKAbilitySystemComponent.h"
 #include "Gameplay/GAS/SKCommonGameplayTagsLib.h"
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
+#include "Logging/StructuredLog.h"
 #include "UI/Data/SKInventoryObjectData.h"
 #include "UI/SKPlayerHUD.h"
 #include "UI/Widgets/SKInventoryWidget.h"
 
-/********************* DEFAULT *********************/
+#include "Controllers/SKPlayerController.h"
+#include "EnhancedInputComponent.h"
+#include "EnhancedInputSubsystems.h"
+
 ASKPlayerCharacter::ASKPlayerCharacter(const FObjectInitializer &ObjectInitializer) : Super(ObjectInitializer)
 {
     PlayerCamera = CreateDefaultSubobject<UCameraComponent>("Player camera");
@@ -27,6 +28,7 @@ ASKPlayerCharacter::ASKPlayerCharacter(const FObjectInitializer &ObjectInitializ
 
     PhysicsHandle = CreateDefaultSubobject<USKPhysicsHandleComponent>("Physics handle");
 }
+/************************************ UE INHERITED ******************************************/
 
 void ASKPlayerCharacter::Tick(float DeltaTime)
 {
@@ -40,66 +42,21 @@ void ASKPlayerCharacter::Tick(float DeltaTime)
 void ASKPlayerCharacter::BeginPlay()
 {
     Super::BeginPlay();
-    InitializeComponents();
+    SKPlayerController = CastChecked<ASKPlayerController>(GetController());
 }
 
 /********************* INPUT *********************/
-void ASKPlayerCharacter::SetupPlayerInputComponent(UInputComponent *PlayerInputComponent)
-{
-    Super::SetupPlayerInputComponent(PlayerInputComponent);
-
-    ControllerSetup();
-
-    if (UEnhancedInputComponent *Input = CastChecked<UEnhancedInputComponent>(PlayerInputComponent))
-    {
-
-        Input->BindAction(InputData.MovingAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::MoveAction);
-        Input->BindAction(InputData.MovingAction, ETriggerEvent::Completed, this, &ASKPlayerCharacter::MoveAction);
-        Input->BindAction(InputData.LookAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::LookingAction);
-        Input->BindAction(InputData.LookAction, ETriggerEvent::Completed, this, &ASKPlayerCharacter::LookingAction);
-        Input->BindAction(InputData.JumpAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::Jump);
-        Input->BindAction(InputData.SprintAction, ETriggerEvent::Triggered, this,
-                          &ASKPlayerCharacter::ActivateSprintAbility);
-        Input->BindAction(InputData.WalkAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::TryWalking);
-        Input->BindAction(InputData.AltAction, ETriggerEvent::Triggered, this,
-                          &ASKPlayerCharacter::HandleAlternativeAction);
-        Input->BindAction(InputData.InteractionAction, ETriggerEvent::Triggered, this, &ASKPlayerCharacter::Interact);
-        Input->BindAction(InputData.InteractionActionHold, ETriggerEvent::Triggered, this,
-                          &ASKPlayerCharacter::HandleGrabbing);
-        Input->BindAction(InputData.InventoryToggleAction, ETriggerEvent::Triggered, this,
-                          &ASKPlayerCharacter::HandleInventoryToggle);
-    }
-}
-
-void ASKPlayerCharacter::ControllerSetup()
-{
-    if (APlayerController *PC = Cast<APlayerController>(GetController()))
-    {
-        if (UEnhancedInputLocalPlayerSubsystem *Subsystem =
-                ULocalPlayer::GetSubsystem<UEnhancedInputLocalPlayerSubsystem>(PC->GetLocalPlayer()))
-        {
-            Subsystem->ClearAllMappings();
-            Subsystem->AddMappingContext(InputData.InputMapping, 0);
-        }
-    }
-}
 
 void ASKPlayerCharacter::MoveAction(const FInputActionValue &Value)
 {
     if (Value.IsNonZero())
     {
-        bIsReceivingInput = true;
-        // UE_LOG(LogSKCharacterMovement, Display, TEXT("Player is receiving movement input"));
+        if (bEnableLogging && bEnableLoggingInput)
+            UE_LOG(LogSKCharacterMovement, Display, TEXT("Player is receiving movement input"));
 
         const FVector2D MovingAxis = Value.Get<FVector2D>();
         AddMovementInput(GetActorForwardVector(), MovingAxis.X);
         AddMovementInput(GetActorRightVector(), MovingAxis.Y);
-    }
-    else
-    {
-        // UE_LOG(LogSKCharacterMovement, Display, TEXT("Player is no longer receiving movement input"));
-
-        bIsReceivingInput = false;
     }
 }
 
@@ -107,8 +64,13 @@ void ASKPlayerCharacter::LookingAction(const FInputActionValue &Value)
 {
     if (Value.IsNonZero())
     {
-        bIsReceivingInput = true;
-        // UE_LOG(LogSKCharacterMovement, Display, TEXT("Player receiving looking input"));
+        if (bEnableLogging && bEnableLoggingInput)
+            UE_LOG(LogSKCharacterMovement, Display, TEXT("Player receiving looking input"));
+
+        if (Value.GetMagnitude() > 0.2f)
+        {
+            bIsLookIdle = true;
+        }
 
         const auto LookingAxisX = Value.Get<FVector2D>().X;
         const auto LookingAxisY = Value.Get<FVector2D>().Y * -1;
@@ -125,53 +87,29 @@ void ASKPlayerCharacter::LookingAction(const FInputActionValue &Value)
     }
     else
     {
-        bIsReceivingInput = false;
-        // UE_LOG(LogSKCharacterMovement, Display, TEXT("Player is no longer receiving looking input"));
+        bIsLookIdle = false;
     }
 }
+/************************************ State  ******************************************/
 
-/********************* MULTITHREADING *********************/
-AActor *ASKPlayerCharacter::GetLookedAtActor() const
+void ASKPlayerCharacter::HandleIdling()
 {
-    double BestDotProduct = -1.0f;
-    double Threshold = 0.0f;
-    AActor *Item = nullptr;
-
-    FRWScopeLock ReadLock(DataGuard, SLT_ReadOnly);
-
-    for (const auto &ItemInVicinity : InteractablesInVicinity)
+    if (!IsCharacterMoving() && !bIsLookIdle) // TODO: add mouse input check
     {
-        // get actor bounds
-        FVector ActorBoundsOrigin, ActorBoxExtent;
-        ItemInVicinity->GetActorBounds(false, ActorBoundsOrigin, ActorBoxExtent);
-
-        // calcuate dot product
-        const auto DotProduct = FVector::DotProduct(
-            PlayerCamera->GetForwardVector(),
-            UKismetMathLibrary::GetDirectionUnitVector(PlayerCamera->GetComponentLocation(), ActorBoundsOrigin));
-        if (DotProduct >= BestDotProduct)
-            BestDotProduct = DotProduct;
-        else
-            continue;
-
-        // Minimally required dot product value to be considered
-        Threshold = FMath::Clamp(
-            (FVector::Distance(PlayerCamera->GetComponentLocation(), ActorBoundsOrigin) / 10000.0f) + 0.95f, 0.0f,
-            0.99f);
-
-        Item = ItemInVicinity;
+        StartIdle();
     }
-
-    if (BestDotProduct < Threshold)
-        return nullptr;
     else
-        return Item;
+    {
+        StopIdle();
+    }
 }
+
+/************************************ DEBUG ******************************************/
 
 void ASKPlayerCharacter::PrintDebugInfo()
 {
     // Vicinity Debug
-    /*
+    
         // showing the amount of items in vicinity
         if (DataGuard.TryReadLock())
         {
@@ -182,12 +120,13 @@ void ASKPlayerCharacter::PrintDebugInfo()
         }
 
         // Show if can interact in the moment
-        if (InteractibleActive.IsValid())
+        if (InteractionTarget.IsValid())
         {
             GEngine->AddOnScreenDebugMessage(2, 0.0f, FColor::Emerald, "I'm looking at: " +
-       InteractibleActive->GetName(), true);
+       InteractionTarget->GetName(), true);
         }
-        */
+        
+
     // Draw XY arrows for physics handle debug
     /*
     if (PhysicsHandle && PhysicsHandle->GrabbedComponent)
@@ -227,17 +166,17 @@ void ASKPlayerCharacter::PrintDebugInfo()
 
     // Interactible active rotation debug info
     /*
-    if (InteractibleActive.IsValid())
+    if (InteractionTarget.IsValid())
     {
         // �������� ������� ��������� �������
-        FRotator InteractibleRotation = InteractibleActive->GetActorRotation();
+        FRotator InteractibleRotation = InteractionTarget->GetActorRotation();
 
         // ������� ������� ��������� ������� �� �����
         GEngine->AddOnScreenDebugMessage(
             -1, // ���������� ID ���������, -1 ��������, ��� ��������� �������� ����� �����
             0,  // ����� ����������� ���������
             FColor::Cyan, // ���� ������
-            FString::Printf(TEXT("InteractibleActive Rotation: Pitch: %f, Yaw: %f, Roll: %f"),
+            FString::Printf(TEXT("InteractionTarget Rotation: Pitch: %f, Yaw: %f, Roll: %f"),
                             InteractibleRotation.Pitch, InteractibleRotation.Yaw, InteractibleRotation.Roll));
     }*/
 
@@ -274,30 +213,30 @@ void ASKPlayerCharacter::PrintDebugInfo()
 
 void ASKPlayerCharacter::HandleInteractionActor()
 {
-    InteractibleActive = GetLookedAtActor();
+    InteractionTarget = GetLookedAtActor();
 
-    if (!InteractibleActive.IsValid())
+    if (!InteractionTarget.IsValid())
     {
         AbilitySystemComponent->CheckAndRemoveGameplayTag(USKCommonGameplayTagsLib::GetTag_CanInteract());
         return;
     }
 
     // final check with trace
-    FHitResult TraceCheck = TraceToActor(InteractibleActive.Get());
+    FHitResult TraceCheck = TraceToActor(InteractionTarget.Get());
 
     if (!TraceCheck.bBlockingHit) return;
 
     // final comparison
-    if (TraceCheck.GetActor() == InteractibleActive || TraceCheck.GetActor()->Implements<USKInterfaceInteractable>())
+    if (TraceCheck.GetActor() == InteractionTarget || TraceCheck.GetActor()->Implements<USKInterfaceInteractable>())
 
     {
-        InteractibleActive = TraceCheck.GetActor();
+        InteractionTarget = TraceCheck.GetActor();
         AbilitySystemComponent->CheckAndAddGameplayTag(USKCommonGameplayTagsLib::GetTag_CanInteract());
     }
 
     else
     {
-        InteractibleActive = nullptr;
+        InteractionTarget = nullptr;
     }
 }
 
@@ -309,15 +248,15 @@ void ASKPlayerCharacter::Interact()
         AbilitySystemComponent->RemoveLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem());
         AbilitySystemComponent->RemoveLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_RotatingItem());
     }
-    else if (!InteractibleActive.IsValid())
+    else if (!InteractionTarget.IsValid())
     {
         return;
     }
     else
     {
         ASKBaseCharacter::Interact();
-        if (PlayerController->GetPlayerHUD()->IsInventoryOpen())
-            PlayerController->GetPlayerHUD()->GetInventoryWidget()->UpdateInventoryWidget();
+        if (SKPlayerController->GetPlayerHUD()->IsInventoryOpen())
+            SKPlayerController->GetPlayerHUD()->GetInventoryWidget()->UpdateInventoryWidget();
     }
 }
 
@@ -345,11 +284,11 @@ void ASKPlayerCharacter::DropItem(USKInventoryObjectData *ItemToRemove, const in
 
 bool ASKPlayerCharacter::CanGrabItem()
 {
-    if (!InteractibleActive.IsValid()) return false;
+    if (!InteractionTarget.IsValid()) return false;
 
     if (AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_CanInteract()) &&
         !AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem()) &&
-        InteractibleActive->GetRootComponent()->IsSimulatingPhysics()) // TODO: Check by interface in the future
+        InteractionTarget->GetRootComponent()->IsSimulatingPhysics()) // TODO: Check by interface in the future
     {
         return true;
     }
@@ -364,9 +303,9 @@ void ASKPlayerCharacter::HandleGrabbing()
     if (CanGrabItem())
     {
         AbilitySystemComponent->CheckAndAddGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem());
-        PhysicsHandle->GrabItem();
+        PhysicsHandle->GrabItem(InteractionTarget->GetComponentByClass<UMeshComponent>());
     }
-    else if (!CanGrabItem() && PhysicsHandle->GetItemToGrab())
+    else if (!CanGrabItem() && PhysicsHandle->GetGrabbedComponent())
     {
         AbilitySystemComponent->CheckAndRemoveGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem());
         AbilitySystemComponent->CheckAndRemoveGameplayTag(USKCommonGameplayTagsLib::GetTag_RotatingItem());
@@ -391,15 +330,43 @@ void ASKPlayerCharacter::HandleAlternativeAction()
     }
 }
 
-/*********************** UI ***********************/
-void ASKPlayerCharacter::HandleInventoryToggle() { PlayerController->ToggleInventoryHUD(); }
-
 /********************* UTILS *********************/
 
-void ASKPlayerCharacter::InitializeComponents()
+AActor *ASKPlayerCharacter::GetLookedAtActor() const
 {
-    PlayerController = Cast<ASKPlayerController>(UGameplayStatics::GetPlayerController(this, 0));
-    check(PlayerController.Get());
+    double BestDotProduct = -1.0f;
+    double Threshold = 0.0f;
+    AActor *Item = nullptr;
+
+    FRWScopeLock ReadLock(DataGuard, SLT_ReadOnly);
+
+    for (const auto &ItemInVicinity : InteractablesInVicinity)
+    {
+        // get actor bounds
+        FVector ActorBoundsOrigin, ActorBoxExtent;
+        ItemInVicinity->GetActorBounds(false, ActorBoundsOrigin, ActorBoxExtent);
+
+        // calcuate dot product
+        const auto DotProduct = FVector::DotProduct(
+            PlayerCamera->GetForwardVector(),
+            UKismetMathLibrary::GetDirectionUnitVector(PlayerCamera->GetComponentLocation(), ActorBoundsOrigin));
+        if (DotProduct >= BestDotProduct)
+            BestDotProduct = DotProduct;
+        else
+            continue;
+
+        // Minimally required dot product value to be considered
+        Threshold = FMath::Clamp(
+            (FVector::Distance(PlayerCamera->GetComponentLocation(), ActorBoundsOrigin) / 10000.0f) + 0.95f, 0.0f,
+            0.99f);
+
+        Item = ItemInVicinity;
+    }
+
+    if (BestDotProduct < Threshold)
+        return nullptr;
+    else
+        return Item;
 }
 
 FHitResult ASKPlayerCharacter::TraceToActor(const AActor *OtherActor) const
@@ -422,7 +389,7 @@ bool ASKPlayerCharacter::TraceFromCamera(FHitResult &HitResult, const float Trac
 }
 
 bool ASKPlayerCharacter::TraceFromCamera(FHitResult &HitResult, const float TraceDistance,
-                                         const UMeshComponent *ComponentToIgnore)
+                                         const UPrimitiveComponent *ComponentToIgnore)
 {
     FVector TraceStart = PlayerCamera->GetComponentLocation();
     FVector TracecEnd = TraceStart + (PlayerCamera->GetForwardVector() * TraceDistance);

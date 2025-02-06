@@ -3,6 +3,9 @@
 #include "Characters/Components/SKCharacterMovementComponent.h"
 #include "Characters/SKBaseCharacter.h"
 #include "Core/SKLogCategories.h"
+#include "Gameplay/GAS/SKAbilitySystemComponent.h"
+#include "Gameplay/GAS/SKAttributeSetSkills.h"
+#include "Gameplay/GAS/SKCommonGameplayTagsLib.h"
 
 USKCharacterMovementComponent::USKCharacterMovementComponent(const FObjectInitializer &ObjectInitializer)
     : Super(ObjectInitializer)
@@ -11,17 +14,60 @@ USKCharacterMovementComponent::USKCharacterMovementComponent(const FObjectInitia
 
 void USKCharacterMovementComponent::BeginPlay()
 {
-    Super::BeginPlay();
+    OwnerSKCharacter = Cast<ASKBaseCharacter>(GetOwner());
+    check(OwnerSKCharacter.IsValid());
 
-    Character = Cast<ASKBaseCharacter>(GetOwner());
-    check(Character);
+    AttributeSetSkills = OwnerSKCharacter->GetAbilitySystemComponent()->GetSet<USKAttributeSetSkills>();
+    check(AttributeSetSkills);
 
     BaseWalkSpeed = MaxWalkSpeed;
     check(BaseWalkSpeed == MaxWalkSpeed)
+
+        Super::BeginPlay();
 }
 
-void USKCharacterMovementComponent::StartRunning() { MaxWalkSpeed = BaseWalkSpeed * (Athletics / 100.0f); }
+void USKCharacterMovementComponent::TickComponent(float DeltaTime, ELevelTick TickType,
+                                                  FActorComponentTickFunction *ThisTickFunction)
+{
+    Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-void USKCharacterMovementComponent::StartSprinting() { MaxWalkSpeed = (BaseWalkSpeed * 2.0f) * (Athletics / 100.0f); }
+    HandleRunningSpeed();
+}
 
-void USKCharacterMovementComponent::StartWalking() { MaxWalkSpeed = 120.0f;  }
+void USKCharacterMovementComponent::StartRunning()
+{
+    FScopeLock Lock(&CriticalSection);
+
+    MaxWalkSpeed = BaseWalkSpeed * (AttributeSetSkills->GetAthletics() / 100.0f);
+}
+
+void USKCharacterMovementComponent::StartSprinting()
+{
+    FScopeLock Lock(&CriticalSection);
+
+    MaxWalkSpeed = (BaseWalkSpeed * 2.0f) * (AttributeSetSkills->GetAthletics() / 100.0f);
+}
+
+void USKCharacterMovementComponent::StartWalking()
+{
+    FScopeLock Lock(&CriticalSection);
+
+    MaxWalkSpeed = 120.0f;
+}
+
+void USKCharacterMovementComponent::HandleRunningSpeed()
+{
+    const auto runningTagC = USKCommonGameplayTagsLib::GetTag_Running().GetSingleTagContainer();
+    if (OwnerSKCharacter->GetAbilitySystemComponent()->HasAnyMatchingGameplayTags(runningTagC))
+    {
+        Async(EAsyncExecution::TaskGraph, [&]() {
+            FScopeLock Lock(&CriticalSection);
+
+            auto decreaseCoef = FMath::GetMappedRangeValueClamped(
+                TRange<float>::Inclusive(0.0f, 180.0f), TRange<float>::Inclusive(1.0f, 0.3f),
+                FMath::Abs(OwnerSKCharacter->GetCharacterMovementAngle()));
+
+            MaxWalkSpeed = BaseWalkSpeed * decreaseCoef;
+        });
+    }
+}

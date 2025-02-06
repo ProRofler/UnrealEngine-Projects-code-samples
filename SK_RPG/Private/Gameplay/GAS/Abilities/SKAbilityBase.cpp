@@ -11,11 +11,11 @@ void USKAbilityBase::OnGiveAbility(const FGameplayAbilityActorInfo *ActorInfo, c
 {
     Super::OnGiveAbility(ActorInfo, Spec);
 
-    // Get Reference to owning char
+    if (GetInstancingPolicy() == EGameplayAbilityInstancingPolicy::NonInstanced)
+        checkf(false, TEXT("This ability can't be non-instanced!"));
+
     if (const FGameplayAbilityActorInfo *OwnerActorInfo = GetCurrentActorInfo())
-    {
-        OwnerCharacter = Cast<ASKBaseCharacter>(OwnerActorInfo->AvatarActor);
-    }
+        OwnerCharacter = CastChecked<ASKBaseCharacter>(OwnerActorInfo->AvatarActor);
 }
 
 void USKAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle,

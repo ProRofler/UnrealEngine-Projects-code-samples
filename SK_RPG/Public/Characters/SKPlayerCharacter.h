@@ -3,7 +3,6 @@
 #pragma once
 
 #include "Characters/SKBaseCharacter.h"
-#include "Core/EnhancedInputData.h"
 #include "CoreMinimal.h"
 #include "SKPlayerCharacter.generated.h"
 
@@ -22,61 +21,67 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
   public:
     friend USKPhysicsHandleComponent;
     friend USKInventoryWidget;
+    friend ASKPlayerController;
 
     ASKPlayerCharacter(const FObjectInitializer &ObjectInitializer);
-    virtual void SetupPlayerInputComponent(class UInputComponent *PlayerInputComponent) override;
-    virtual void Tick(float DeltaTime) override;
 
-    // ******** UTILS *****
-    bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance);
+    /************************************ UE INHERITED ******************************************/
 
   protected:
-    // super
+    virtual void Tick(float DeltaTime) override;
     virtual void BeginPlay() override;
 
-    // Player specific
-    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "_Player camera settings")
-    TObjectPtr<UCameraComponent> PlayerCamera;
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "_Enhanced input settings")
-    FEnhancedInputData InputData;
-    UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "Actor components")
-    TObjectPtr<USKPhysicsHandleComponent> PhysicsHandle;
+    /************************************ UTILS ******************************************/
 
-    void HandleAlternativeAction();
-
-    // interactions
-    virtual void HandleInteractionActor() override;
-    virtual void Interact() override;
-    void DropItem(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop);
-
-    UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "Interactions settings")
-    float GrabDistance = 150.0f;
+  public:
+    bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance);
 
   private:
-    // player components
-    TWeakObjectPtr<ASKPlayerController> PlayerController;
+    AActor *GetLookedAtActor() const;
+    bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance,
+                         const UPrimitiveComponent *ComponentToIgnore);
+    FHitResult TraceToActor(const AActor *OtherActor) const;
 
-    void InitializeComponents();
+    /************************************ Player specific ******************************************/
+  protected:
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SK Player camera")
+    TObjectPtr<UCameraComponent> PlayerCamera;
+    UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "SK Actor components")
+    TObjectPtr<USKPhysicsHandleComponent> PhysicsHandle;
 
-    // input related
-    void ControllerSetup();
+    /************************************ Input ******************************************/
+  private:
     UFUNCTION()
     void MoveAction(const FInputActionValue &Value);
     UFUNCTION()
     void LookingAction(const FInputActionValue &Value);
 
-    // UI
-    void HandleInventoryToggle();
+    /************************************ State  ******************************************/
+  private:
+    virtual void HandleIdling() override;
 
-    // interactions
-    AActor *GetLookedAtActor() const;
-    bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance, const UMeshComponent *ComponentToIgnore);
-    FHitResult TraceToActor(const AActor *OtherActor) const;
+    bool bIsLookIdle = false;
+    /************************************ Interactions ******************************************/
+  protected:
+    UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "SK Interactions settings")
+    float GrabDistance = 150.0f;
 
-    // grabbing
+    void HandleAlternativeAction();
+    virtual void HandleInteractionActor() override;
+    virtual void Interact() override;
+    void DropItem(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop);
+
+  private:
+    TWeakObjectPtr<ASKPlayerController> SKPlayerController = nullptr;
+
     void HandleGrabbing();
     bool CanGrabItem();
 
-    // debug
+    /************************************ DEBUG ******************************************/
+  protected:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Logging", meta = (EditCondition = "bEnableLogging"))
+    bool bEnableLoggingInput = true;
+
+  private:
     void PrintDebugInfo();
 };

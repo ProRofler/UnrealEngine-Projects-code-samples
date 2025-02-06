@@ -9,8 +9,8 @@
 class USKInventoryObjectData;
 class ASKBaseCharacter;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnItemPickupDelegate, const AActor *, PickedItem);
-DECLARE_DYNAMIC_DELEGATE(FOnInventoryUpdated);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnItemPickupDelegateSignature, const AActor *, PickedItem);
+DECLARE_DYNAMIC_DELEGATE(FOnInventoryUpdatedSignature);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SIRKNIGHT_API USKInventoryComponent : public UActorComponent
@@ -28,9 +28,9 @@ class SIRKNIGHT_API USKInventoryComponent : public UActorComponent
     bool IsInventoryEmpty() const { return InventoryData.IsEmpty(); }
 
     UPROPERTY(BlueprintAssignable, Category = "Interactions")
-    FOnItemPickupDelegate OnItemPickup;
+    FOnItemPickupDelegateSignature OnItemPickup;
     UPROPERTY(BlueprintReadOnly, Category = "Interactions")
-    FOnInventoryUpdated OnInventoryUpdated;
+    FOnInventoryUpdatedSignature OnInventoryUpdated;
 
     TArray<TObjectPtr<USKInventoryObjectData>> &GetInventoryData() { return InventoryData; }
 

@@ -18,8 +18,8 @@ class SIRKNIGHT_API USKAbilityBase : public UGameplayAbility
 
     virtual void OnGiveAbility(const FGameplayAbilityActorInfo *ActorInfo, const FGameplayAbilitySpec &Spec);
 
-    UFUNCTION(BlueprintCallable, Category = "Ability references to basics")
-    ASKBaseCharacter *GetOwnerCharacter() const { return OwnerCharacter; }
+    UFUNCTION(BlueprintCallable, Category = "SK Getters")
+    ASKBaseCharacter *GetSKOwnerCharacter() const { return OwnerCharacter; }
 
   protected:
     virtual void ActivateAbility(const FGameplayAbilitySpecHandle Handle, const FGameplayAbilityActorInfo *ActorInfo,

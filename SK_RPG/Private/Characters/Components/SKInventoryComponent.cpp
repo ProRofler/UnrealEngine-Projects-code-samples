@@ -5,7 +5,7 @@
 #include "Core/Interface/SKInterfaceInteractable.h"
 #include "Core/SKLogCategories.h"
 #include "Logging/StructuredLog.h"
-#include "Props/SKCollectible.h"
+#include "Gameplay/Interactables/SKCollectible.h"
 #include "UI/Data/SKInventoryObjectData.h"
 
 /********************* DEFAULT *********************/
@@ -131,6 +131,8 @@ TObjectPtr<USKInventoryObjectData> USKInventoryComponent::FindInventoryItem(
 {
     for (auto &Data : InventoryData)
     {
+        check(Data)
+
         if (ObjectData->GetItemClass() == Data->GetItemClass())
         {
             return Data;

@@ -13,26 +13,23 @@ void USKPhysicsHandleComponent::BeginPlay()
     Player = Cast<ASKPlayerCharacter>(GetOwner());
 }
 
-void USKPhysicsHandleComponent::GrabItem()
+void USKPhysicsHandleComponent::GrabItem(UPrimitiveComponent* ComponentToGrab)
 {
-    if (!(Player->GetInteractibleActive())) return;
-
-    ItemToGrab = Player->GetInteractibleActive()->FindComponentByClass<UMeshComponent>();
-    if (!ItemToGrab) return;
+    if (!ComponentToGrab) return;
 
     FVector GrabPivot;
     FHitResult HitResult_pivot;
 
-    if (Player->TraceFromCamera(HitResult_pivot, 250.0f) && HitResult_pivot.GetComponent() == ItemToGrab)
+    if (Player->TraceFromCamera(HitResult_pivot, 250.0f) && HitResult_pivot.GetComponent() == ComponentToGrab)
         GrabPivot = HitResult_pivot.ImpactPoint;
     else
-        GrabPivot = ItemToGrab->GetComponentLocation();
+        GrabPivot = ComponentToGrab->GetComponentLocation();
 
-    ItemToGrab->SetUseCCD(true);
+    ComponentToGrab->SetUseCCD(true);
 
-    GrabComponentAtLocationWithRotation(ItemToGrab, NAME_None, GrabPivot, ItemToGrab->GetComponentRotation());
+    GrabComponentAtLocationWithRotation(ComponentToGrab, NAME_None, GrabPivot, ComponentToGrab->GetComponentRotation());
 
-    InitialRelativeRotation = ItemToGrab->GetComponentRotation() - Player->GetActorRotation();
+    InitialRelativeRotation = ComponentToGrab->GetComponentRotation() - Player->GetActorRotation();
 
     Player->TryWalking();
     Async(EAsyncExecution::ThreadIfForkSafe, [&]() { UpdateGrabLocation(); });
@@ -42,12 +39,12 @@ void USKPhysicsHandleComponent::UpdateGrabLocation()
 {
     while (Player->GetAbilitySystemComponent()->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem()))
     {
-        if (IsValid(ItemToGrab) && GetWorld())
+        if (GrabbedComponent && GetWorld())
         {
             FVector GrabLocation;
             FHitResult HitResult_loc;
 
-            if (Player->TraceFromCamera(HitResult_loc, Player->GrabDistance, ItemToGrab))
+            if (Player->TraceFromCamera(HitResult_loc, Player->GrabDistance,GrabbedComponent))
                 GrabLocation = HitResult_loc.ImpactPoint;
             else
                 GrabLocation = HitResult_loc.TraceEnd;
@@ -61,7 +58,7 @@ void USKPhysicsHandleComponent::UpdateGrabLocation()
                 SetTargetRotation(NewRotation);
             }
 
-            if (ItemToGrab && CheckDistanceToPlayer(ItemToGrab->GetOwner()) >= 40000.0f)
+            if (GrabbedComponent && CheckDistanceToPlayer(GrabbedComponent->GetOwner()) >= 40000.0f)
             {
                 Async(EAsyncExecution::TaskGraphMainThread, [&]() { Player->HandleGrabbing(); });
                 return;
@@ -76,6 +73,8 @@ void USKPhysicsHandleComponent::UpdateGrabLocation()
 
 void USKPhysicsHandleComponent::RotateGrabbedComponent(const FVector2D &Input)
 {
+    if (!GrabbedComponent) return;
+
     FVector HandleLoc;
     FRotator HandleRot;
     GetTargetLocationAndRotation(HandleLoc, HandleRot);
@@ -101,9 +100,8 @@ float USKPhysicsHandleComponent::CheckDistanceToPlayer(const AActor *OtherActor)
 
 void USKPhysicsHandleComponent::ReleaseItem()
 {
+    GrabbedComponent->SetUseCCD(false);
     ReleaseComponent();
-    GetItemToGrab()->SetUseCCD(false);
-    ItemToGrab = nullptr;
     InitialRelativeRotation = FRotator::ZeroRotator;
     Player->TryRunning();
 }

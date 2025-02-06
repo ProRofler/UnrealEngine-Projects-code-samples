@@ -14,10 +14,8 @@ class SIRKNIGHT_API USKPhysicsHandleComponent : public UPhysicsHandleComponent
     GENERATED_BODY()
 
   public:
-    // getters
-    const TObjectPtr<UMeshComponent> &GetItemToGrab() const { return ItemToGrab; }
 
-    void GrabItem();
+    void GrabItem(UPrimitiveComponent *ComponentToGrab);
     void ReleaseItem();
     void RotateGrabbedComponent(const FVector2D &Input);
 
@@ -27,7 +25,6 @@ class SIRKNIGHT_API USKPhysicsHandleComponent : public UPhysicsHandleComponent
   private:
     void UpdateGrabLocation();
     ASKPlayerCharacter *Player = nullptr;
-    TObjectPtr<UMeshComponent> ItemToGrab;
     FRotator InitialRelativeRotation;
     float CheckDistanceToPlayer(const AActor *OtherActor);
 };

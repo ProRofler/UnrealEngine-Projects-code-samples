@@ -28,19 +28,30 @@ class SIRKNIGHT_API USKAbilitySystemComponent : public UAbilitySystemComponent
     UFUNCTION(BlueprintCallable)
     bool CheckAndRemoveGameplayTag(const FGameplayTag &Tag);
 
-    UFUNCTION(BlueprintCallable)
-    TArray<UGameplayAbility *> &GetGrantedAbilities() { return GrantedAbilities; };
+    UFUNCTION(BlueprintCallable, Category = "SK Abilities")
+    TArray<TSubclassOf<UGameplayAbility>> &GetGrantedAbilities() { return GrantedAbilities; };
+
+    UFUNCTION(BlueprintCallable, Category = "SK Attributes")
+    void StartStaminaRegeneration();
+
+    UFUNCTION(BlueprintCallable, Category = "SK Attributes")
+    void StopStaminaRegeneration();
 
   protected:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Abilities|Granted abilities")
-    TArray<UGameplayAbility *> GrantedAbilities;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Abilities|Granted abilities")
+    TArray<TSubclassOf<UGameplayAbility>> GrantedAbilities;
 
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Abilities|Default Abilities")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Abilities|Default Abilities")
     TSubclassOf<UGameplayAbility> SprintingAbility;
-
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Abilities|Default Abilities")
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Abilities|Default Abilities")
     TSubclassOf<UGameplayAbility> InteractAbility;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Attributes|Regen Gameplay Effects")
+    TSubclassOf<UGameplayEffect> StaminaRegenGEClass;
 
   private:
     void InitAbilities();
+    FGameplayEffectSpecHandle MakeGESpecHandle(const TSubclassOf<UGameplayEffect> &GameplayEffectClass);    
+
+    FActiveGameplayEffectHandle StaminaRegenActiveGESpecHandle;
 };

@@ -10,6 +10,13 @@ void USKAbilitySystemComponent::InitializeComponent()
     Super::InitializeComponent();
 
     InitAbilities();
+
+    if (!StaminaRegenGEClass)
+    {
+        UE_LOGFMT(LogSKAbilitySystem, Error, "{Owner} has no stamina regeneration Gameplay Effect set!",
+                  ("Owner", GetOwner()->GetName()));
+        checkNoEntry()
+    }
 }
 
 bool USKAbilitySystemComponent::IsAbilityActive(TSubclassOf<UGameplayAbility> AbilityClass) const
@@ -78,6 +85,41 @@ bool USKAbilitySystemComponent::CheckAndRemoveGameplayTag(const FGameplayTag &Ta
     }
 }
 
+FGameplayEffectSpecHandle USKAbilitySystemComponent::MakeGESpecHandle(
+    const TSubclassOf<UGameplayEffect> &GameplayEffectClass)
+{
+    auto geContext = MakeEffectContext();
+    geContext.AddSourceObject(GetOwner());
+
+    const auto gERegenSpec = MakeOutgoingSpec(GameplayEffectClass, 1.0f, geContext);
+    check(gERegenSpec.IsValid());
+
+    return gERegenSpec;
+}
+
+void USKAbilitySystemComponent::StartStaminaRegeneration()
+{
+    if (StaminaRegenActiveGESpecHandle.IsValid()) return;
+
+    StaminaRegenActiveGESpecHandle = ApplyGameplayEffectSpecToSelf(*MakeGESpecHandle(StaminaRegenGEClass).Data.Get());
+    check(StaminaRegenActiveGESpecHandle.IsValid());
+
+    UE_LOGFMT(LogSKAbilitySystem, Display, "{Owner} succesfully applied {Effect}", ("Owner", GetOwner()->GetName()),
+              ("Effect", StaminaRegenGEClass->GetName()));
+}
+
+void USKAbilitySystemComponent::StopStaminaRegeneration()
+{
+    if (!StaminaRegenActiveGESpecHandle.IsValid()) return;
+
+    RemoveActiveGameplayEffect(StaminaRegenActiveGESpecHandle);
+    StaminaRegenActiveGESpecHandle.Invalidate();
+
+    if (!StaminaRegenActiveGESpecHandle.IsValid())
+        UE_LOGFMT(LogSKAbilitySystem, Display, "{Owner} succesfully removed {Effect}", ("Owner", GetOwner()->GetName()),
+                  ("Effect", StaminaRegenGEClass->GetName()));
+}
+
 void USKAbilitySystemComponent::InitAbilities()
 {
     InitAbilityActorInfo(GetOwner(), GetOwner());
@@ -110,12 +152,11 @@ void USKAbilitySystemComponent::InitAbilities()
             ("ActorName", GetOwner()->GetName()));
     }
 
-    // Adding all the additional abilities
-    if (GrantedAbilities.IsEmpty())
+    if (!GrantedAbilities.IsEmpty())
     {
-        for (auto Ability : GrantedAbilities)
+        for (auto &Ability : GrantedAbilities)
         {
-            GiveAbility(FGameplayAbilitySpec(Ability->GetClass(), 1, 0, this));
+            GiveAbility(FGameplayAbilitySpec(Ability, 1, 0, GetOwner()));
         }
     }
 }

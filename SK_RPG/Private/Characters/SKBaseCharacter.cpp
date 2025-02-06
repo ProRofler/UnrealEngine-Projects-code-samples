@@ -14,6 +14,7 @@
 #include "Gameplay/GAS/SKAttributeSet.h"
 #include "Gameplay/GAS/SKAttributeSetSkills.h"
 #include "Gameplay/GAS/SKCommonGameplayTagsLib.h"
+#include "GameplayEffect.h"
 #include "Logging/StructuredLog.h"
 
 ASKBaseCharacter::ASKBaseCharacter(const FObjectInitializer &ObjectInitializer)
@@ -53,11 +54,15 @@ void ASKBaseCharacter::BeginPlay()
 
     if (IsValid(AbilitySystemComponent))
     {
-        AttributeSet = AbilitySystemComponent->GetSet<USKAttributeSet>();
-        AttributeSetSkills = AbilitySystemComponent->GetSet<USKAttributeSetSkills>();
+        AttributeSet = CastChecked<USKAttributeSet>(AbilitySystemComponent->GetSet<USKAttributeSet>());
+        AttributeSetSkills =
+            CastChecked<USKAttributeSetSkills>(AbilitySystemComponent->GetSet<USKAttributeSetSkills>());
     }
 
     TryRunning();
+
+    OnStaminaChanged.BindUObject(this, &ASKBaseCharacter::HandleStaminaChange);
+    OnHealthChanged.BindUObject(this, &ASKBaseCharacter::HandleHealthChange);
 }
 
 void ASKBaseCharacter::Tick(float DeltaTime)
@@ -91,8 +96,77 @@ void ASKBaseCharacter::OnOverlapEnd(UPrimitiveComponent *OverlappedComponent, AA
             InteractablesInVicinity.Remove(OtherActor);
             DataGuard.WriteUnlock();
         }
-        InteractibleActive = nullptr;
+        InteractionTarget = nullptr;
     }
+}
+
+/************************************ Attributes ******************************************/
+
+float ASKBaseCharacter::GetStaminaPercent() const
+{
+    return AttributeSet->GetStamina() / AttributeSet->GetMaxStamina(); // clamping is already made in attribute set
+}
+
+float ASKBaseCharacter::GetHealthPercent() const
+{
+    return AttributeSet->GetHealth() / AttributeSet->GetMaxHealth();
+    // return 0.5f;
+}
+
+void ASKBaseCharacter::HandleStaminaChange(const float ChangedAmount)
+{
+    if (bEnableLogging && bEnableLoggingAbilitySystem)
+        UE_LOGFMT(LogSKAbilitySystem, Display, "{Actor} stamina change call for {Amount}",
+                  ("Actor", GetOwner()->GetName()), ("Amount", FString::SanitizeFloat(ChangedAmount)));
+
+    if (ChangedAmount < 0)
+    {
+        AbilitySystemComponent->StopStaminaRegeneration();
+
+        if (GetWorldTimerManager().IsTimerActive(StaminaRegenTimerHandle))
+        {
+            GetWorldTimerManager().ClearTimer(StaminaRegenTimerHandle);
+            GetWorldTimerManager().SetTimer(StaminaRegenTimerHandle, AbilitySystemComponent.Get(),
+                                            &USKAbilitySystemComponent::StartStaminaRegeneration, 0.2f, false, 2.0f);
+        }
+        else
+        {
+            GetWorldTimerManager().SetTimer(StaminaRegenTimerHandle, AbilitySystemComponent.Get(),
+                                            &USKAbilitySystemComponent::StartStaminaRegeneration, 0.2f, false, 2.0f);
+        }
+
+        if (FMath::IsNearlyZero(Cast<USKAttributeSet>(AttributeSet)->GetStamina()))
+        {
+            HandleStaminaDepleted();
+        }
+    }
+    else
+    {
+        if (IsStaminaFull())
+        {
+            GetWorldTimerManager().ClearTimer(StaminaRegenTimerHandle);
+            AbilitySystemComponent->StopStaminaRegeneration();
+        }
+    }
+}
+
+void ASKBaseCharacter::HandleHealthChange(const float ChangedAmount)
+{
+    if (bEnableLogging && bEnableLoggingAbilitySystem) UE_LOGFMT(LogSKAbilitySystem, Display, "Health changed");
+}
+
+void ASKBaseCharacter::HandleStaminaDepleted()
+{
+
+    FGameplayTagContainer tagsToCancel;
+    tagsToCancel.AddTag(USKCommonGameplayTagsLib::GetTag_Sprinting());
+
+    AbilitySystemComponent->CancelAbilities(&tagsToCancel);
+}
+
+bool ASKBaseCharacter::IsStaminaFull() const
+{
+    return FMath::IsNearlyEqual(AttributeSet->GetStamina(), AttributeSet->GetMaxStamina());
 }
 
 //************************** GAS **************************
@@ -101,18 +175,20 @@ UAbilitySystemComponent *ASKBaseCharacter::GetAbilitySystemComponent() const
     return Cast<UAbilitySystemComponent>(AbilitySystemComponent.Get());
 }
 
-void ASKBaseCharacter::ActivateSprintAbility()
+/************************************ MOVEMENT  ******************************************/
+
+void ASKBaseCharacter::TrySprinting()
 {
 
     if (AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem())) return;
 
-    const auto wantsToSpringTagContainer = USKCommonGameplayTagsLib::GetTag_WantsToSprint().GetSingleTagContainer();
-    if (!AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_WantsToSprint()))
-    {
-        AbilitySystemComponent->AddLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_WantsToSprint());
-        AbilitySystemComponent->TryActivateAbilitiesByTag(wantsToSpringTagContainer);
+    const auto wantsToSprintTagContainer = USKCommonGameplayTagsLib::GetTag_WantsToSprint().GetSingleTagContainer();
 
-        if (bEnableLogging)
+    if (AbilitySystemComponent->CheckAndAddGameplayTag(USKCommonGameplayTagsLib::GetTag_WantsToSprint()))
+    {
+        AbilitySystemComponent->TryActivateAbilitiesByTag(wantsToSprintTagContainer);
+
+        if (bEnableLogging && bEnableLoggingAbilitySystem)
             UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' wants to sprint",
                       ("ActorName", this->GetName()));
     }
@@ -120,17 +196,15 @@ void ASKBaseCharacter::ActivateSprintAbility()
     {
 
         AbilitySystemComponent->RemoveLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_WantsToSprint());
-        AbilitySystemComponent->CancelAbilities(&wantsToSpringTagContainer);
+        AbilitySystemComponent->CancelAbilities(&wantsToSprintTagContainer);
 
-        if (bEnableLogging)
+        if (bEnableLogging && bEnableLoggingAbilitySystem)
             UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' no loger wants to sprint",
                       ("ActorName", this->GetName()));
     }
 }
 
-/************************************ MOVEMENT  ******************************************/
-
-void ASKBaseCharacter::TrySrinting() const
+void ASKBaseCharacter::StartSprinting() const
 {
     MovementComponent->StartSprinting();
     OnStartedSprinting.Broadcast();
@@ -158,7 +232,7 @@ void ASKBaseCharacter::TryWalking()
             AbilitySystemComponent->RemoveLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_Running());
         }
 
-        if (bEnableLogging)
+        if (bEnableLogging && bEnableLoggingAbilitySystem)
             UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' is now walking",
                       ("ActorName", this->GetName()));
     }
@@ -169,7 +243,23 @@ void ASKBaseCharacter::TryWalking()
     }
 }
 
-float ASKBaseCharacter::GetCharacterMovementAngle()
+void ASKBaseCharacter::TryJumping()
+{
+
+    if (AbilitySystemComponent->CheckAndAddGameplayTag(USKCommonGameplayTagsLib::GetTag_WantsToJump()))
+    {
+        if (!AbilitySystemComponent->TryActivateAbilitiesByTag(
+                USKCommonGameplayTagsLib::GetTag_WantsToJump().GetSingleTagContainer()))
+            AbilitySystemComponent->CheckAndRemoveGameplayTag(USKCommonGameplayTagsLib::GetTag_WantsToJump());
+    }
+}
+
+bool ASKBaseCharacter::IsMovingForward() const
+{
+    return GetActorForwardVector().Equals(GetVelocity().GetSafeNormal(), 0.6f);
+}
+
+float ASKBaseCharacter::GetCharacterMovementAngle() const
 {
     if (GetVelocity().IsZero()) return 0.0f;
     const auto VelocityNormal = GetVelocity().GetSafeNormal();
@@ -184,56 +274,91 @@ void ASKBaseCharacter::TryRunning() const
 {
     if (AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_Running())) return;
 
-    if (AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_Walking()))
-    {
-        AbilitySystemComponent->RemoveLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_Walking());
-    }
-
-    if (AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_Idling()))
-    {
-        AbilitySystemComponent->RemoveLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_Idling());
-    }
+    AbilitySystemComponent->CheckAndRemoveGameplayTag(USKCommonGameplayTagsLib::GetTag_Walking());
+    AbilitySystemComponent->CheckAndRemoveGameplayTag(USKCommonGameplayTagsLib::GetTag_Idling());
 
     MovementComponent->StartRunning();
     OnStartedRunning.Broadcast();
 
-    AbilitySystemComponent->AddLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_Running());
+    if (!AbilitySystemComponent->CheckAndAddGameplayTag(USKCommonGameplayTagsLib::GetTag_Running())) checkNoEntry();
 
-    if (bEnableLogging)
+    if (bEnableLogging && bEnableLoggingAbilitySystem)
         UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' is now running",
                   ("ActorName", this->GetName()));
 }
 
-/************************************ STATE  ******************************************/
-
-void ASKBaseCharacter::HandleIdling()
+/************************************ ACTIONS  ******************************************/
+void ASKBaseCharacter::TryDrawWeapon()
 {
-    if (!bIsReceivingInput && GetVelocity().IsNearlyZero())
-    {
-        if (!AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_Idling()))
-        {
-            AbilitySystemComponent->AddLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_Idling());
+    const auto wantsToDrawWeaponTag = FGameplayTag::RequestGameplayTag("Character.Request.Action.WantsToDrawWeapon");
+    const auto wantsToDrawWeaponTagCcontainer = wantsToDrawWeaponTag.GetSingleTagContainer();
 
-            if (bEnableLogging)
-                UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' is now idling",
-                          ("ActorName", this->GetName()));
-        }
+    if (!AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_WeaponDrawn()) &&
+        !AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_Sprinting()))
+    {
+        AbilitySystemComponent->CheckAndAddGameplayTag(wantsToDrawWeaponTag);
+        AbilitySystemComponent->TryActivateAbilitiesByTag(wantsToDrawWeaponTagCcontainer);
     }
     else
     {
-        if (AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_Idling()))
-        {
-            AbilitySystemComponent->RemoveLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_Idling());
+        AbilitySystemComponent->CancelAbilities(&wantsToDrawWeaponTagCcontainer);
+    }
+}
 
-            if (bEnableLogging)
-                UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' is no longer idling",
-                          ("ActorName", this->GetName()));
-        }
+/************************************ STATE  ******************************************/
+
+bool ASKBaseCharacter::IsCharacterMoving() const
+{
+    return !GetVelocity().IsNearlyZero() && !MovementComponent->IsFalling();
+}
+
+void ASKBaseCharacter::HandleIdling() // adds idle tag and stops sprinting
+{
+    if (!IsCharacterMoving())
+    {
+        StartIdle();
+    }
+    else
+    {
+        StopIdle();
+    }
+}
+
+void ASKBaseCharacter::StartIdle()
+{
+    if (AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_Sprinting()))
+    {
+        auto sprintingTagContainer = USKCommonGameplayTagsLib::GetTag_Sprinting().GetSingleTagContainer();
+        AbilitySystemComponent->CancelAbilities(&sprintingTagContainer);
+    }
+
+    if (AbilitySystemComponent->CheckAndAddGameplayTag(USKCommonGameplayTagsLib::GetTag_Idling()))
+    {
+
+        if (bEnableLogging)
+            UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' is now idling",
+                      ("ActorName", this->GetName()));
+    }
+}
+
+void ASKBaseCharacter::StopIdle()
+{
+    if (AbilitySystemComponent->CheckAndRemoveGameplayTag(USKCommonGameplayTagsLib::GetTag_Idling()))
+    {
+        if (bEnableLogging)
+            UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' is no longer idling",
+                      ("ActorName", this->GetName()));
+    }
+
+    if (!IsMovingForward() &&
+        AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_Sprinting()))
+    {
+        auto sprintingTag = USKCommonGameplayTagsLib::GetTag_Sprinting().GetSingleTagContainer();
+        AbilitySystemComponent->CancelAbilities(&sprintingTag);
     }
 }
 
 //************************** MULTITHREADING **************************
-
 void ASKBaseCharacter::AsyncInteractionHandle()
 {
     Async(EAsyncExecution::TaskGraph, [&]() { HandleInteractionActor(); });
@@ -267,28 +392,30 @@ void ASKBaseCharacter::HandleInteractionActor()
 
 void ASKBaseCharacter::Interact()
 {
-    if (!InteractibleActive.IsValid() || !AbilitySystemComponent->InteractAbility) return;
+    if (!InteractionTarget.IsValid() || !AbilitySystemComponent->InteractAbility) return;
 
     const auto canInteractTag = FGameplayTag::RequestGameplayTag("Character.State.Action.CanInteract");
     const auto wantToInteractTag = FGameplayTag::RequestGameplayTag("Character.Request.Action.WantsToInteract");
 
     if (AbilitySystemComponent->HasMatchingGameplayTag(canInteractTag))
     {
-        UE_LOGFMT(LogSKAbilitySystem, Display, "'{ActorName}' tried to interact with '{InteractableName}'!",
-                  ("ActorName", this->GetName()), ("InteractableName", InteractibleActive->GetName()));
+        if (bEnableLogging && bEnableLoggingAbilitySystem)
+            UE_LOGFMT(LogSKAbilitySystem, Display, "'{ActorName}' tried to interact with '{InteractableName}'!",
+                      ("ActorName", this->GetName()), ("InteractableName", InteractionTarget->GetName()));
 
         if (AbilitySystemComponent->CheckAndAddGameplayTag(wantToInteractTag))
         {
-            if (InteractibleActive->Implements<USKInterfaceCollectible>())
+            if (InteractionTarget->Implements<USKInterfaceCollectible>())
             {
-                Inventory->AddToInventory(InteractibleActive.Get());
+                Inventory->AddToInventory(InteractionTarget.Get());
             }
 
             if (!AbilitySystemComponent->TryActivateAbilitiesByTag(wantToInteractTag.GetSingleTagContainer()))
             {
-                UE_LOGFMT(LogSKAbilitySystem, Error,
-                          "Actor '{ActorName}' interact ability was not activated for unknown reasons!",
-                          ("ActorName", this->GetName()));
+                if (bEnableLogging && bEnableLoggingAbilitySystem)
+                    UE_LOGFMT(LogSKAbilitySystem, Error,
+                              "Actor '{ActorName}' interact ability was not activated for unknown reasons!",
+                              ("ActorName", this->GetName()));
             }
         }
     }

@@ -7,7 +7,7 @@
 #include "GameplayTags.h"
 #include "SKStateMachineComponent.generated.h"
 
-DECLARE_DYNAMIC_DELEGATE_OneParam(FOnActionRequestAdd, FGameplayTag &, AddedTag);
+DECLARE_DYNAMIC_DELEGATE_OneParam(FOnActionRequestAddSignature, FGameplayTag &, AddedTag);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SIRKNIGHT_API USKStateMachineComponent : public UActorComponent

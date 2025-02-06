@@ -2,24 +2,31 @@
 
 #include "UI/SKPlayerHUD.h"
 #include "Blueprint/UserWidget.h"
+#include "Characters/SKPlayerCharacter.h"
 #include "Core/SKLogCategories.h"
 #include "Engine/Canvas.h"
 #include "UI/Widgets/SKInventoryWidget.h"
+#include "UI/Widgets/SKMainAttributesWidget.h"
 
 void ASKPlayerHUD::BeginPlay()
 {
     Super::BeginPlay();
 
-    InventoryWidget = Cast<USKInventoryWidget>(CreateWidget(GetWorld(), InventoryWidgetClass));
+    InventoryWidget = CastChecked<USKInventoryWidget>(CreateWidget(GetWorld(), InventoryWidgetClass));
+    MainAttributesWidget = CastChecked<USKMainAttributesWidget>(CreateWidget(GetWorld(), MainAttributesWidgettClass));
+    SKPlayer = CastChecked<ASKPlayerCharacter>(GetOwningPlayerController()->GetCharacter());
 
-    if (InventoryWidget)
+    if (InventoryWidget && MainAttributesWidget)
     {
-        InventoryWidget->AddToViewport();
-        InventoryWidget->SetVisibility(ESlateVisibility::Hidden);
+        InventoryWidget->AddToViewport(10);
+        InventoryWidget->SetVisibility(ESlateVisibility::Collapsed);
+
+        MainAttributesWidget->AddToViewport(0);
+        MainAttributesWidget->SetVisibility(ESlateVisibility::Visible);
     }
     else
     {
-        UE_LOG(LogSKUserInterface, Error, TEXT("Player's inventory widget failed to initialize in ASKPlayerHUD class"));
+        UE_LOG(LogSKUserInterface, Error, TEXT("One of the widgets is nullptr!"));
     }
 }
 
@@ -50,7 +57,7 @@ void ASKPlayerHUD::ToggleInventoryVisibility()
             InventoryWidget->HandleInventoryOpen();
             InventoryWidget->SetVisibility(ESlateVisibility::Visible);
             break;
-        default: InventoryWidget->SetVisibility(ESlateVisibility::Hidden); break;
+        default: InventoryWidget->SetVisibility(ESlateVisibility::Collapsed); break;
         }
 
         bIsInventoryOpen = !bIsInventoryOpen;

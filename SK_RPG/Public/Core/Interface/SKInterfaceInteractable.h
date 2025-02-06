@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "UObject/Interface.h"
+
 #include "SKInterfaceInteractable.generated.h"
 
 UINTERFACE(BlueprintType)
@@ -12,13 +13,11 @@ class USKInterfaceInteractable : public UInterface
     GENERATED_BODY()
 };
 
-
 class SIRKNIGHT_API ISKInterfaceInteractable
 {
     GENERATED_BODY()
 
   public:
-
-      UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Implemented interfaces")
-      void OnInteraction(const AActor* TriggeredActor);
+    UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Implemented interfaces")
+    void OnInteraction(const AActor *TriggeredActor);
 };

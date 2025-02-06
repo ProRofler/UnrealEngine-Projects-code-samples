@@ -8,6 +8,8 @@
 
 class UUserWidget;
 class USKInventoryWidget;
+class USKMainAttributesWidget;
+class ASKPlayerCharacter;
 
 UCLASS()
 class SIRKNIGHT_API ASKPlayerHUD : public AHUD
@@ -18,9 +20,13 @@ class SIRKNIGHT_API ASKPlayerHUD : public AHUD
     virtual void DrawHUD() override;
 
     TObjectPtr<USKInventoryWidget> &GetInventoryWidget() { return InventoryWidget; }
+    TObjectPtr<USKMainAttributesWidget> &GetMainAttributesWidget() { return MainAttributesWidget; }
 
     bool IsInventoryOpen() { return bIsInventoryOpen; }
     void ToggleInventoryVisibility();
+
+    UFUNCTION(BlueprintPure, Category = "SK Getters")
+    ASKPlayerCharacter *GetSKPlayerCharacter() { return SKPlayer.Get(); };
 
   protected:
     virtual void BeginPlay() override;
@@ -29,9 +35,15 @@ class SIRKNIGHT_API ASKPlayerHUD : public AHUD
     TSubclassOf<USKInventoryWidget> InventoryWidgetClass;
     TObjectPtr<USKInventoryWidget> InventoryWidget;
 
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Widget classes")
+    TSubclassOf<USKMainAttributesWidget> MainAttributesWidgettClass;
+    TObjectPtr<USKMainAttributesWidget> MainAttributesWidget;
+
     UPROPERTY(BlueprintReadWrite, Category = "UI")
     bool bIsInventoryOpen = false;
 
   private:
     void DrawCrosshair();
+
+    TWeakObjectPtr<ASKPlayerCharacter> SKPlayer = nullptr;
 };

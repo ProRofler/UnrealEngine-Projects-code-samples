@@ -11,7 +11,7 @@
 
 class USKInventoryObjectData;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemDropped, const USKItemListEntry *, ListEntry, const int32,
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnItemDroppedSignature, const USKItemListEntry *, ListEntry, const int32,
                                              QuantityToDrop);
 
 UCLASS()
@@ -23,7 +23,7 @@ class SIRKNIGHT_API USKItemListEntry : public UUserWidget, public IUserObjectLis
     virtual void NativeOnListItemObjectSet(UObject *ListItemObject) override;
 
     UPROPERTY(BlueprintAssignable, Category = "Events")
-    FOnItemDropped OnItemDropCalled;
+    FOnItemDroppedSignature OnItemDropCalled;
 
     UFUNCTION()
     void UnbindDelegates();

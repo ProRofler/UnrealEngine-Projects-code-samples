@@ -4,7 +4,7 @@
 
 #include "Core/SKCoreTypes.h"
 #include "CoreMinimal.h"
-#include "Props/SKCollectible.h"
+#include "Gameplay/Interactables/SKCollectible.h"
 #include "UObject/NoExportTypes.h"
 
 #include "SKInventoryObjectData.generated.h"

@@ -2,8 +2,9 @@
 
 #pragma once
 
-#include "Blueprint/UserWidget.h"
+#include "UI/Widgets/SKUserWidgetBase.h"
 #include "CoreMinimal.h"
+
 #include "SKInventoryWidget.generated.h"
 
 class UListView;
@@ -11,7 +12,7 @@ class ASKPlayerCharacter;
 class USKInventoryObjectData;
 
 UCLASS()
-class SIRKNIGHT_API USKInventoryWidget : public UUserWidget
+class SIRKNIGHT_API USKInventoryWidget : public USKUserWidgetBase
 {
     GENERATED_BODY()
 
@@ -36,9 +37,6 @@ class SIRKNIGHT_API USKInventoryWidget : public UUserWidget
   private:
     bool bIsPendingUpdate = true;
 
-    ASKPlayerCharacter *Player;
-
-    ASKPlayerCharacter *GetOwningCharacter();
     void InitDelegates();
 
     void HandleEntryWidgetGenerated(UUserWidget &EntryWidget);
