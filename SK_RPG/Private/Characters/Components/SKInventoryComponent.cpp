@@ -4,8 +4,8 @@
 #include "Characters/SKBaseCharacter.h"
 #include "Core/Interface/SKInterfaceInteractable.h"
 #include "Core/SKLogCategories.h"
-#include "Logging/StructuredLog.h"
 #include "Gameplay/Interactables/SKCollectible.h"
+#include "Logging/StructuredLog.h"
 #include "UI/Data/SKInventoryObjectData.h"
 
 /********************* DEFAULT *********************/
@@ -126,16 +126,15 @@ void USKInventoryComponent::InitDelegates()
     // OwningCharacter->OnItemPickup.AddDynamic(this, &USKInventoryComponent::AddToInventory);
 }
 
-TObjectPtr<USKInventoryObjectData> USKInventoryComponent::FindInventoryItem(
-    const USKInventoryObjectData *ObjectData) const
+USKInventoryObjectData *USKInventoryComponent::FindInventoryItem(const USKInventoryObjectData *ObjectData)
 {
     for (auto &Data : InventoryData)
     {
         check(Data)
 
-        if (ObjectData->GetItemClass() == Data->GetItemClass())
+            if (ObjectData->GetItemClass() == Data->GetItemClass())
         {
-            return Data;
+            return Data.Get();
         }
     }
     return nullptr;

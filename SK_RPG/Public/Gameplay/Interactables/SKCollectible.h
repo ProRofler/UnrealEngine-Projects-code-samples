@@ -17,7 +17,7 @@ class SIRKNIGHT_API ASKCollectible : public ASKInteractableBase, public ISKInter
     ASKCollectible();
 
     UFUNCTION(BlueprintCallable)
-    const int32 &GetItemQuantity() const { return Quantity; }
+    const FORCEINLINE int32 &GetItemQuantity() const { return Quantity; }
 
     virtual void OnInteraction_Implementation(const AActor *TriggeredActor) override;
 

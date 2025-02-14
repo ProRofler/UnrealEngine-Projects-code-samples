@@ -23,9 +23,18 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
 
     virtual void OnInteraction_Implementation(const AActor *TriggeredActor) override;
 
+#if !UE_BUILD_SHIPPING
+    virtual void Tick(float DeltaSeconds);
+#endif
+
+#if WITH_EDITORONLY_DATA
+    UPROPERTY(EditAnywhere, Category = "SK Debug")
+    bool bDrawCenterSphere = false;
+#endif
+
     // getters
     UFUNCTION(BlueprintCallable)
-    FName GetInGameName() const { return InGameName; }
+    FORCEINLINE FName GetInGameName() const { return InGameName; }
 
   protected:
     virtual void BeginPlay() override;
@@ -46,4 +55,6 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
 
     UPROPERTY(EditAnywhere, Category = "SK Debugging")
     bool bEnableLogging = true;
+
+    void DrawCenter();
 };

@@ -6,6 +6,8 @@
 #include "CoreMinimal.h"
 #include "SKAbilitySystemComponent.generated.h"
 
+class USKAbilitiesDataAsset;
+
 UCLASS()
 class SIRKNIGHT_API USKAbilitySystemComponent : public UAbilitySystemComponent
 {
@@ -41,6 +43,9 @@ class SIRKNIGHT_API USKAbilitySystemComponent : public UAbilitySystemComponent
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Abilities|Granted abilities")
     TArray<TSubclassOf<UGameplayAbility>> GrantedAbilities;
 
+    UPROPERTY(EditAnywhere, Category = "SK Abilities|Granted abilities")
+    TObjectPtr<USKAbilitiesDataAsset> GrantedAbilitiesDataAsset;
+
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Abilities|Default Abilities")
     TSubclassOf<UGameplayAbility> SprintingAbility;
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Abilities|Default Abilities")
@@ -51,7 +56,7 @@ class SIRKNIGHT_API USKAbilitySystemComponent : public UAbilitySystemComponent
 
   private:
     void InitAbilities();
-    FGameplayEffectSpecHandle MakeGESpecHandle(const TSubclassOf<UGameplayEffect> &GameplayEffectClass);    
+    FGameplayEffectSpecHandle MakeGESpecHandle(const TSubclassOf<UGameplayEffect> &GameplayEffectClass);
 
     FActiveGameplayEffectHandle StaminaRegenActiveGESpecHandle;
 };

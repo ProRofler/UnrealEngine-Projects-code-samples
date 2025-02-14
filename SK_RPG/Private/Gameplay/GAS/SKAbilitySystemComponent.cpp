@@ -4,6 +4,7 @@
 #include "Core/SKLogCategories.h"
 #include "Gameplay/GAS/Abilities/SKAbilityBase.h"
 #include "Logging/StructuredLog.h"
+#include "Utils/DataAssets/SKAbilitiesDataAsset.h"
 
 void USKAbilitySystemComponent::InitializeComponent()
 {
@@ -157,6 +158,17 @@ void USKAbilitySystemComponent::InitAbilities()
         for (auto &Ability : GrantedAbilities)
         {
             GiveAbility(FGameplayAbilitySpec(Ability, 1, 0, GetOwner()));
+        }
+    }
+
+    if (GrantedAbilitiesDataAsset)
+    {
+        if (!GrantedAbilitiesDataAsset->GrantedAbilities.IsEmpty())
+        {
+            for (auto &Ability : GrantedAbilitiesDataAsset->GrantedAbilities)
+            {
+                GiveAbility(FGameplayAbilitySpec(Ability, 1, 0, GetOwner()));
+            }
         }
     }
 }

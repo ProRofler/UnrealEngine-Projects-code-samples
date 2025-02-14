@@ -41,6 +41,7 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
     bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance,
                          const UPrimitiveComponent *ComponentToIgnore);
     FHitResult TraceToActor(const AActor *OtherActor) const;
+    FHitResult TraceToBoundingBox(const AActor *OtherActor) const;
 
     /************************************ Player specific ******************************************/
   protected:

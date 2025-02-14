@@ -109,23 +109,23 @@ void ASKPlayerCharacter::HandleIdling()
 void ASKPlayerCharacter::PrintDebugInfo()
 {
     // Vicinity Debug
-    
-        // showing the amount of items in vicinity
-        if (DataGuard.TryReadLock())
-        {
 
-            GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
-                                             "Items in list: " + FString::FromInt(InteractablesInVicinity.Num()), true);
-            DataGuard.ReadUnlock();
-        }
+    // showing the amount of items in vicinity
+    /*
+     if (DataGuard.TryReadLock())
+    {
 
-        // Show if can interact in the moment
-        if (InteractionTarget.IsValid())
-        {
-            GEngine->AddOnScreenDebugMessage(2, 0.0f, FColor::Emerald, "I'm looking at: " +
-       InteractionTarget->GetName(), true);
-        }
-        
+        GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
+                                         "Items in list: " + FString::FromInt(InteractablesInVicinity.Num()), true);
+        DataGuard.ReadUnlock();
+    } */
+
+    // Show if can interact in the moment
+    if (InteractionTarget.IsValid())
+    {
+        GEngine->AddOnScreenDebugMessage(2, 0.0f, FColor::Emerald, "I'm looking at: " + InteractionTarget->GetName(),
+                                         true);
+    }
 
     // Draw XY arrows for physics handle debug
     /*
@@ -206,7 +206,17 @@ void ASKPlayerCharacter::PrintDebugInfo()
         GEngine->AddOnScreenDebugMessage(6, 0.0f, FColor::Cyan,
                                          "Items in inventory: " + FString::FromInt(Inventory->GetInventoryData().Num()),
                                          true);
-    } */
+
+        FString items;
+
+        for (auto data : GetInventoryComponent()->GetInventoryData())
+        {
+            items.Append(data->GetItemName().ToString() + "\n");
+        }
+
+        GEngine->AddOnScreenDebugMessage(7, 0.0f, FColor::Yellow, "Items: \n" + items, true);
+    }
+    */
 }
 
 /********************* INTERACTIONS *********************/
@@ -222,18 +232,23 @@ void ASKPlayerCharacter::HandleInteractionActor()
     }
 
     // final check with trace
-    FHitResult TraceCheck = TraceToActor(InteractionTarget.Get());
+    FHitResult TraceCheck = TraceToBoundingBox(InteractionTarget.Get());
 
-    if (!TraceCheck.bBlockingHit) return;
+    if (!TraceCheck.bBlockingHit)
+    {
+        if (!TraceFromCamera(TraceCheck, GrabDistance))
+        {
+            InteractionTarget = nullptr;
+            return;
+        }
+    }
 
     // final comparison
     if (TraceCheck.GetActor() == InteractionTarget || TraceCheck.GetActor()->Implements<USKInterfaceInteractable>())
-
     {
         InteractionTarget = TraceCheck.GetActor();
         AbilitySystemComponent->CheckAndAddGameplayTag(USKCommonGameplayTagsLib::GetTag_CanInteract());
     }
-
     else
     {
         InteractionTarget = nullptr;
@@ -357,8 +372,9 @@ AActor *ASKPlayerCharacter::GetLookedAtActor() const
 
         // Minimally required dot product value to be considered
         Threshold = FMath::Clamp(
-            (FVector::Distance(PlayerCamera->GetComponentLocation(), ActorBoundsOrigin) / 10000.0f) + 0.95f, 0.0f,
-            0.99f);
+                        (FVector::Distance(PlayerCamera->GetComponentLocation(), ActorBoundsOrigin) / 10000.0f) + 0.95f,
+                        0.0f, 0.99f) -
+                    (ActorBoundsOrigin.GetAbsMax() / 1000.0f);
 
         Item = ItemInVicinity;
     }
@@ -376,6 +392,20 @@ FHitResult ASKPlayerCharacter::TraceToActor(const AActor *OtherActor) const
 
     GetWorld()->LineTraceSingleByChannel(HitResult, PlayerCamera->GetComponentLocation(),
                                          OtherActor->GetActorLocation(), ECollisionChannel::ECC_Visibility);
+
+    return HitResult;
+}
+
+FHitResult ASKPlayerCharacter::TraceToBoundingBox(const AActor *OtherActor) const
+{
+    FHitResult HitResult;
+
+    const auto tracePoint = OtherActor->GetComponentsBoundingBox().GetCenter();
+
+    // DrawDebugSphere(GetWorld(), tracePoint, 4.0f, 8, FColor::Red, false, 0.1f);
+
+    GetWorld()->LineTraceSingleByChannel(HitResult, PlayerCamera->GetComponentLocation(), tracePoint,
+                                         ECollisionChannel::ECC_Visibility);
 
     return HitResult;
 }

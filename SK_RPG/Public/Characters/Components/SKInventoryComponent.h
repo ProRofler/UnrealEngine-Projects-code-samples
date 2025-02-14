@@ -38,8 +38,10 @@ class SIRKNIGHT_API USKInventoryComponent : public UActorComponent
     virtual void BeginPlay() override;
 
   private:
-    TArray<TObjectPtr<USKInventoryObjectData>> InventoryData;
     ASKBaseCharacter *OwningCharacter = nullptr;
+
+    UPROPERTY()
+    TArray<TObjectPtr<USKInventoryObjectData>> InventoryData;
 
     TObjectPtr<USKInventoryObjectData> CreateInventoryObjectDataItem(const AActor *Item);
 
@@ -48,5 +50,5 @@ class SIRKNIGHT_API USKInventoryComponent : public UActorComponent
     ASKBaseCharacter *GetOwningCharacter();
     void InitDelegates();
 
-    TObjectPtr<USKInventoryObjectData> FindInventoryItem(const USKInventoryObjectData *ObjectData) const;
+    USKInventoryObjectData *FindInventoryItem(const USKInventoryObjectData *ObjectData);
 };

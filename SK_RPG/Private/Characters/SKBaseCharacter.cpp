@@ -412,7 +412,6 @@ void ASKBaseCharacter::Interact()
 
             if (!AbilitySystemComponent->TryActivateAbilitiesByTag(wantToInteractTag.GetSingleTagContainer()))
             {
-                if (bEnableLogging && bEnableLoggingAbilitySystem)
                     UE_LOGFMT(LogSKAbilitySystem, Error,
                               "Actor '{ActorName}' interact ability was not activated for unknown reasons!",
                               ("ActorName", this->GetName()));

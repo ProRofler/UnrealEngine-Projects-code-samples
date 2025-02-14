@@ -33,7 +33,6 @@ void ASKPlayerHUD::BeginPlay()
 void ASKPlayerHUD::DrawHUD()
 {
     Super::DrawHUD();
-    DrawCrosshair();
 }
 
 void ASKPlayerHUD::DrawCrosshair()

@@ -21,17 +21,27 @@ class SIRKNIGHT_API ASKDoorway : public ASKInteractableBase
     virtual void BeginPlay();
     virtual void Tick(float DeltaSeconds);
 
+    virtual void OnConstruction(const FTransform &Transform);
+
     virtual void OnInteraction_Implementation(const AActor *TriggeredActor) override;
 
-    UPROPERTY(EditAnywhere, Category = "SK Doorway properties")
-    float OpeningAngle = 90.0f;
+    UPROPERTY(EditAnywhere, Category = "SK Object settings")
+    bool bShowGhostDoor = true;
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "SK Object settings")
     TObjectPtr<UStaticMeshComponent> DoorMesh;
 
+    UPROPERTY(EditAnywhere, Category = "SK Object settings")
+    TObjectPtr<USceneComponent> OpenedDoorHandleComponent;
+
+    UPROPERTY()
+    TObjectPtr<UStaticMeshComponent> DoorGhostMesh;
+
+    FORCEINLINE bool GetIsActive() const { return bIsActive; }
+
   protected:
     UPROPERTY(EditAnywhere, Category = "SK Doorway properties")
-    bool bIsActivatedRemotely = false;
+    bool bRemoteActivationOnly = false;
 
     UPROPERTY(EditAnywhere, Category = "SK Doorway properties")
     UCurveFloat *AnimationCurve;
@@ -43,5 +53,12 @@ class SIRKNIGHT_API ASKDoorway : public ASKInteractableBase
     FTimeline DoorTimeline;
 
     bool bIsOpened = false;
-    FRotator startRot, endRot;
+    bool bIsActive = false;
+    FTransform StartTransform, EndTransform;
+
+    UPROPERTY()
+    UMaterialInterface *GhostMat = nullptr;
+
+    void SetupGhostMaterial();
+    void AssignGhostMaterial();
 };
