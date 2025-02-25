@@ -7,6 +7,7 @@
 #include "SKAbilitySystemComponent.generated.h"
 
 class USKAbilitiesDataAsset;
+class USKBasicGameplayEffectsDataAsset;
 
 UCLASS()
 class SIRKNIGHT_API USKAbilitySystemComponent : public UAbilitySystemComponent
@@ -15,7 +16,7 @@ class SIRKNIGHT_API USKAbilitySystemComponent : public UAbilitySystemComponent
   public:
     friend class ASKBaseCharacter;
 
-    virtual void InitializeComponent() override;
+    virtual void BeginPlay() override;
 
     UFUNCTION(BlueprintCallable)
     bool IsAbilityActive(TSubclassOf<UGameplayAbility> AbilityClass) const;
@@ -35,9 +36,26 @@ class SIRKNIGHT_API USKAbilitySystemComponent : public UAbilitySystemComponent
 
     UFUNCTION(BlueprintCallable, Category = "SK Attributes")
     void StartStaminaRegeneration();
-
     UFUNCTION(BlueprintCallable, Category = "SK Attributes")
     void StopStaminaRegeneration();
+
+    UFUNCTION(BlueprintCallable, Category = "SK Attributes")
+    void StartHealthRegeneration();
+    UFUNCTION(BlueprintCallable, Category = "SK Attributes")
+    void StopHealthRegeneration();
+
+    UFUNCTION(BlueprintCallable, Category = "SK Attributes")
+    void ApplyFallDamage(const float &FallSpeed);
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Tweaks|Stamina regeneration settings",
+              meta = (ClampMin = "0.01", ClampMax = "100.0", UIMin = "0.01", UIMax = "1.5"))
+    float StaminaRegenAmount = 0.5f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Tweaks|Stamina regeneration settings",
+              meta = (ClampMin = "1.0", ClampMax = "100.0", UIMin = "1.0", UIMax = "1.5"))
+    float StamineRegenWalkMultiplier = 1.3f;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Tweaks|Stamina regeneration settings",
+              meta = (ClampMin = "1.0", ClampMax = "100.0", UIMin = "1.0", UIMax = "2.0"))
+    float StamineRegenIdleMultiplier = 1.8f;
 
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Abilities|Granted abilities")
@@ -52,11 +70,20 @@ class SIRKNIGHT_API USKAbilitySystemComponent : public UAbilitySystemComponent
     TSubclassOf<UGameplayAbility> InteractAbility;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Attributes|Regen Gameplay Effects")
-    TSubclassOf<UGameplayEffect> StaminaRegenGEClass;
+    TObjectPtr<USKBasicGameplayEffectsDataAsset> BasicGameplayEffectsDataAsset = nullptr;
 
   private:
     void InitAbilities();
+    void ValidateGEDataAssets() const;
+    const float CalculateFallDamage(const float &FallSpeed);
+
     FGameplayEffectSpecHandle MakeGESpecHandle(const TSubclassOf<UGameplayEffect> &GameplayEffectClass);
 
     FActiveGameplayEffectHandle StaminaRegenActiveGESpecHandle;
+    FActiveGameplayEffectHandle HealthRegenActiveGESpecHandle;
+
+    UPROPERTY()
+    FVector2D LandingSpeedRange = {700.0f, 1200.0f};
+    UPROPERTY()
+    FVector2D LandingDamageRange = {15.0f, 100.0f};
 };

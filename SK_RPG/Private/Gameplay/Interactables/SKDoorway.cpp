@@ -3,6 +3,7 @@
 #include "Gameplay/Interactables/SKDoorway.h"
 #include "Core/SKLogCategories.h"
 #include "Curves/CurveFloat.h"
+#include "Gameplay/Interactables/Components/SKLockComponent.h"
 #include "Gameplay/Interactables/SKActivator.h"
 #include "Logging/StructuredLog.h"
 
@@ -34,7 +35,7 @@ void ASKDoorway::BeginPlay()
     }
 
     FOnTimelineFloat TimelineCallback;
-    TimelineCallback.BindUFunction(this, FName("HandleDoorOpenClose"));
+    TimelineCallback.BindUFunction(this, GET_FUNCTION_NAME_CHECKED(ASKDoorway, HandleDoorAnimation));
     if (!TimelineCallback.IsBound()) checkNoEntry();
 
     DoorTimeline.AddInterpFloat(AnimationCurve, TimelineCallback);
@@ -70,24 +71,43 @@ void ASKDoorway::OnConstruction(const FTransform &Transform)
 
         if (GhostMat) AssignGhostMaterial();
     }
+
+    if (bRemoteActivationOnly)
+    {
+        bHasLock = false;
+        if (Lock) Lock->DestroyComponent();
+    }
+
+    if (bHasLock)
+    {
+        if (!Lock)
+        {
+            Lock = NewObject<USKLockComponent>(this);
+            if (Lock)
+            {
+                Lock->RegisterComponent();
+                SetFlags(RF_Transactional); // Do I need this?
+            }
+        }
+    }
+    else
+    {
+        if (Lock)
+        {
+            Lock->DestroyComponent();
+            Lock = nullptr;
+        }
+    }
 }
 
 void ASKDoorway::OnInteraction_Implementation(const AActor *TriggeredActor)
 {
     if (bRemoteActivationOnly && !Cast<ASKActivator>(TriggeredActor)) return;
 
-    if (!bIsOpened)
-    {
-        DoorTimeline.Play();
-        bIsOpened = !bIsOpened;
-        bIsActive = true;
-    }
-    else
-    {
-        DoorTimeline.Reverse();
-        bIsOpened = !bIsOpened;
-        bIsActive = true;
-    }
+    if (bHasLock && Lock)
+        if (!Lock->TryUnlocking(TriggeredActor)) return;
+
+    HandleDoorOpenClose();
 
     if (bEnableLogging)
     {
@@ -96,7 +116,7 @@ void ASKDoorway::OnInteraction_Implementation(const AActor *TriggeredActor)
     }
 }
 
-void ASKDoorway::HandleDoorOpenClose(float Value)
+void ASKDoorway::HandleDoorAnimation(float Value)
 {
     FTransform blendVal;
     blendVal.Blend(StartTransform, EndTransform, Value);
@@ -122,5 +142,21 @@ void ASKDoorway::AssignGhostMaterial()
     for (int i = 0; i < DoorGhostMesh->GetNumMaterials(); i++)
     {
         DoorGhostMesh->SetMaterial(i, GhostMat);
+    }
+}
+
+void ASKDoorway::HandleDoorOpenClose()
+{
+    if (!bIsOpened)
+    {
+        DoorTimeline.Play();
+        bIsOpened = !bIsOpened;
+        bIsActive = true;
+    }
+    else
+    {
+        DoorTimeline.Reverse();
+        bIsOpened = !bIsOpened;
+        bIsActive = true;
     }
 }

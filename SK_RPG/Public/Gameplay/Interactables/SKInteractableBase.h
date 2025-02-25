@@ -34,13 +34,16 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
 
     // getters
     UFUNCTION(BlueprintCallable)
-    FORCEINLINE FName GetInGameName() const { return InGameName; }
+    FORCEINLINE FName GetInteractableName() const { return InteractableName; }
+
+    UFUNCTION(BlueprintCallable)
+    void SetInteractableName(const FName &ItemName) { InteractableName = ItemName; };
 
   protected:
     virtual void BeginPlay() override;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SK Base properties | Interactables")
-    FName InGameName = TEXT("_DEFAULT_NAME_");
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SK Base properties | Interactables")
+    FName InteractableName = TEXT("_DEFAULT_NAME_");
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SK Base properties | Interactables")
     bool bIsBreakable = false;

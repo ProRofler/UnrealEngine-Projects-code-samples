@@ -1,20 +1,27 @@
 // Copyright (c) 2024. Sir Knight title is a property of Quantinum ltd. All rights reserved.
 
 #include "Characters/SKPlayerCharacter.h"
+
 #include "Camera/CameraComponent.h"
+
 #include "Characters/Components/SKInventoryComponent.h"
 #include "Characters/Components/SKPhysicsHandleComponent.h"
+
 #include "Core/Interface/SKInterfaceInteractable.h"
 #include "Core/SKCoreTypes.h"
-#include "Core/SKLogCategories.h"
+
 #include "Gameplay/GAS/SKAbilitySystemComponent.h"
 #include "Gameplay/GAS/SKCommonGameplayTagsLib.h"
+
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
-#include "Logging/StructuredLog.h"
+
 #include "UI/Data/SKInventoryObjectData.h"
 #include "UI/SKPlayerHUD.h"
 #include "UI/Widgets/SKInventoryWidget.h"
+
+#include "Core/SKLogCategories.h"
+#include "Logging/StructuredLog.h"
 
 #include "Controllers/SKPlayerController.h"
 #include "EnhancedInputComponent.h"
@@ -46,6 +53,18 @@ void ASKPlayerCharacter::BeginPlay()
 }
 
 /********************* INPUT *********************/
+
+void ASKPlayerCharacter::HandleDeath()
+{
+    Super::HandleDeath();
+    if (PlayerCamera && GetMesh())
+    {
+        PlayerCamera->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale,
+                                        TEXT("headSocket"));
+    }
+    DisableInput(SKPlayerController.Get());
+    SKPlayerController->SetIgnoreLookInput(true);
+}
 
 void ASKPlayerCharacter::MoveAction(const FInputActionValue &Value)
 {
@@ -288,10 +307,23 @@ void ASKPlayerCharacter::DropItem(USKInventoryObjectData *ItemToRemove, const in
     }
     else
     {
-        AActor *SpawnedItem = GetWorld()->SpawnActor<AActor>(
-            ItemToRemove->GetItemClass(), dropPosition.TraceEnd,
-            GetActorForwardVector().Rotation() +
-                FRotator(0.0f, 270.0f, 90.0f)); // Need to update when I change the default mesh orientation
+        FTransform spawnTransform;
+
+        spawnTransform.SetRotation((GetActorForwardVector().Rotation() + FRotator(0.0f, 270.0f, 90.0f)).Quaternion());
+        spawnTransform.SetLocation(dropPosition.TraceEnd);
+
+        ASKCollectible *SpawnedItem =
+            GetWorld()->SpawnActorDeferred<ASKCollectible>(ItemToRemove->GetItemClass(), spawnTransform);
+        if (SpawnedItem)
+        {
+            SpawnedItem->SetInteractableName(ItemToRemove->GetItemName());
+            SpawnedItem->FinishSpawning(spawnTransform);
+        }
+        else
+        {
+            UE_LOGFMT(LogSKInteractions, Error, "{1} tried to drop {2} but there was an error during spawning!",
+                      ("1", GetName()), ("2", ItemToRemove->GetName()));
+        }
     }
 
     Inventory->RemoveFromInventory(ItemToRemove, QuantityToDrop);

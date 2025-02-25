@@ -9,7 +9,12 @@
 #include "UI/Data/SKInventoryObjectData.h"
 
 /********************* DEFAULT *********************/
-USKInventoryComponent::USKInventoryComponent() { PrimaryComponentTick.bCanEverTick = false; }
+USKInventoryComponent::USKInventoryComponent()
+{
+    PrimaryComponentTick.bCanEverTick = false;
+
+    UE_LOGFMT(LogTemp, Warning, "Inventory created");
+}
 
 void USKInventoryComponent::BeginPlay()
 {
@@ -75,6 +80,16 @@ void USKInventoryComponent::RemoveFromInventory(USKInventoryObjectData *ItemToRe
     UE_LOGFMT(LogSKInteractions, Display, "Actor: {0} Dropped item: {1}", this->GetName(), ItemToRemove->GetName());
 }
 
+bool USKInventoryComponent::IsInInventory(const FName &Name) const
+{
+    for (const auto item : InventoryData)
+    {
+        if (item->GetItemName() == Name) return true;
+    }
+
+    return false;
+}
+
 TObjectPtr<USKInventoryObjectData> USKInventoryComponent::CreateInventoryObjectDataItem(const AActor *Item)
 {
     if (!Item) return nullptr;
@@ -84,7 +99,7 @@ TObjectPtr<USKInventoryObjectData> USKInventoryComponent::CreateInventoryObjectD
 
     if (TObjectPtr<USKInventoryObjectData> newInventoryItem = NewObject<USKInventoryObjectData>(this))
     {
-        newInventoryItem->InitializeItemData(originaItem->GetInGameName(), originaItem->GetItemQuantity(),
+        newInventoryItem->InitializeItemData(originaItem->GetInteractableName(), originaItem->GetItemQuantity(),
                                              originaItem->GetClass());
         return newInventoryItem;
     }

@@ -50,6 +50,10 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
     UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "SK Actor components")
     TObjectPtr<USKPhysicsHandleComponent> PhysicsHandle;
 
+    /************************************ Attributes ******************************************/
+  private:
+    virtual void HandleDeath() override;
+
     /************************************ Input ******************************************/
   private:
     UFUNCTION()

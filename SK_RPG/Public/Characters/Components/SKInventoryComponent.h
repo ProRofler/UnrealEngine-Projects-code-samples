@@ -27,6 +27,9 @@ class SIRKNIGHT_API USKInventoryComponent : public UActorComponent
     UFUNCTION(BlueprintCallable, Category = "Inventory")
     bool IsInventoryEmpty() const { return InventoryData.IsEmpty(); }
 
+    UFUNCTION(BlueprintCallable, Category = "Inventory")
+    bool IsInInventory(const FName &Name) const; // FName version
+
     UPROPERTY(BlueprintAssignable, Category = "Interactions")
     FOnItemPickupDelegateSignature OnItemPickup;
     UPROPERTY(BlueprintReadOnly, Category = "Interactions")

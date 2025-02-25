@@ -9,6 +9,7 @@
 #include "SKDoorway.generated.h"
 
 class UCurveFloat;
+class USKLockComponent;
 
 UCLASS()
 class SIRKNIGHT_API ASKDoorway : public ASKInteractableBase
@@ -31,7 +32,7 @@ class SIRKNIGHT_API ASKDoorway : public ASKInteractableBase
     UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "SK Object settings")
     TObjectPtr<UStaticMeshComponent> DoorMesh;
 
-    UPROPERTY(EditAnywhere, Category = "SK Object settings")
+    UPROPERTY(VisibleAnywhere, Category = "SK Object settings")
     TObjectPtr<USceneComponent> OpenedDoorHandleComponent;
 
     UPROPERTY()
@@ -43,11 +44,17 @@ class SIRKNIGHT_API ASKDoorway : public ASKInteractableBase
     UPROPERTY(EditAnywhere, Category = "SK Doorway properties")
     bool bRemoteActivationOnly = false;
 
+    UPROPERTY(EditAnywhere, Category = "SK Doorway properties", meta = (EditCondition = "!bRemoteActivationOnly"))
+    bool bHasLock = false;
+
     UPROPERTY(EditAnywhere, Category = "SK Doorway properties")
     UCurveFloat *AnimationCurve;
 
     UFUNCTION()
-    void HandleDoorOpenClose(float Value);
+    void HandleDoorAnimation(float Value);
+
+    UPROPERTY(VisibleAnywhere, meta = (EditCondition = "bHasLock"))
+    TObjectPtr<USKLockComponent> Lock = nullptr;
 
   private:
     FTimeline DoorTimeline;
@@ -61,4 +68,5 @@ class SIRKNIGHT_API ASKDoorway : public ASKInteractableBase
 
     void SetupGhostMaterial();
     void AssignGhostMaterial();
+    void HandleDoorOpenClose();
 };

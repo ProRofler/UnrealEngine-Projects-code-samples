@@ -57,12 +57,35 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     UFUNCTION(BlueprintPure)
     FORCEINLINE float GetHealthPercent() const;
 
+    UFUNCTION(BlueprintCallable, Category = "SK Attributes")
+    bool IsStaminaFull() const;
+    UFUNCTION(BlueprintCallable, Category = "SK Attributes")
+    bool IsHeathFull() const;
+    UFUNCTION(BlueprintCallable, Category = "SK Attributes")
+    bool IsDead() const;
+
+    UFUNCTION()
+    virtual void HandleDeath();
+
   private:
     void HandleStaminaChange(const float ChangedAmount);
-    void HandleHealthChange(const float ChangedAmount);
     void HandleStaminaDepleted();
+    void HandleHealthChange(const float ChangedAmount);
 
-    bool IsStaminaFull() const;
+    template <typename T>
+    FORCEINLINE void HandleRegenTimer(FTimerHandle &TimerHandle, T *Object, void (T::*Function)(), float LoopingTime,
+                                      float InitialDelay)
+    {
+        if (GetWorldTimerManager().IsTimerActive(TimerHandle))
+        {
+            GetWorldTimerManager().ClearTimer(TimerHandle);
+            GetWorldTimerManager().SetTimer(TimerHandle, Object, Function, LoopingTime, false, InitialDelay);
+        }
+        else
+        {
+            GetWorldTimerManager().SetTimer(TimerHandle, Object, Function, LoopingTime, false, InitialDelay);
+        }
+    }
     /************************************ MOVEMENT  ******************************************/
   public:
     UFUNCTION(BlueprintCallable)
@@ -80,6 +103,8 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
 
     UFUNCTION(BlueprintPure, Category = "SK Character movement")
     bool IsMovingForward() const;
+
+    virtual void Landed(const FHitResult &Hit);
 
     UPROPERTY(BlueprintAssignable, Category = "SK Events")
     FOnStartedSprintingSignature OnStartedSprinting;
@@ -101,9 +126,6 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     virtual void HandleIdling();
     void StartIdle();
     void StopIdle();
-
-  private:
-    void HandleIdleTimer();
 
     /************************************ Interactions  ******************************************/
   public:
@@ -131,7 +153,7 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
 
     /************************************ COMPONENTS  ******************************************/
   public:
-    const TObjectPtr<USKInventoryComponent> &GetInventoryComponent() { return Inventory; }
+    FORCEINLINE const TObjectPtr<USKInventoryComponent> &GetInventoryComponent() const { return Inventory; }
     virtual UAbilitySystemComponent *GetAbilitySystemComponent() const override;
 
   protected:
@@ -145,6 +167,7 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     /************************************ Timers ******************************************/
   private:
     FTimerHandle StaminaRegenTimerHandle;
+    FTimerHandle HealthRegenTimerHandle;
     FTimerHandle InteractionTimer;
 
     /************************************ DEBUGGING  ******************************************/

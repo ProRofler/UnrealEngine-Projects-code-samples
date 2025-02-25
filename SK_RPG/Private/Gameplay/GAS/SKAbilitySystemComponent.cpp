@@ -5,19 +5,14 @@
 #include "Gameplay/GAS/Abilities/SKAbilityBase.h"
 #include "Logging/StructuredLog.h"
 #include "Utils/DataAssets/SKAbilitiesDataAsset.h"
+#include "Utils/DataAssets/SKBasicGameplayEffectsDataAsset.h"
 
-void USKAbilitySystemComponent::InitializeComponent()
+void USKAbilitySystemComponent::BeginPlay()
 {
-    Super::InitializeComponent();
+    Super::BeginPlay();
 
     InitAbilities();
-
-    if (!StaminaRegenGEClass)
-    {
-        UE_LOGFMT(LogSKAbilitySystem, Error, "{Owner} has no stamina regeneration Gameplay Effect set!",
-                  ("Owner", GetOwner()->GetName()));
-        checkNoEntry()
-    }
+    ValidateGEDataAssets();
 }
 
 bool USKAbilitySystemComponent::IsAbilityActive(TSubclassOf<UGameplayAbility> AbilityClass) const
@@ -102,11 +97,12 @@ void USKAbilitySystemComponent::StartStaminaRegeneration()
 {
     if (StaminaRegenActiveGESpecHandle.IsValid()) return;
 
-    StaminaRegenActiveGESpecHandle = ApplyGameplayEffectSpecToSelf(*MakeGESpecHandle(StaminaRegenGEClass).Data.Get());
+    StaminaRegenActiveGESpecHandle = ApplyGameplayEffectSpecToSelf(
+        *MakeGESpecHandle(BasicGameplayEffectsDataAsset->StaminaRegenGameplayEffect).Data.Get());
     check(StaminaRegenActiveGESpecHandle.IsValid());
 
     UE_LOGFMT(LogSKAbilitySystem, Display, "{Owner} succesfully applied {Effect}", ("Owner", GetOwner()->GetName()),
-              ("Effect", StaminaRegenGEClass->GetName()));
+              ("Effect", BasicGameplayEffectsDataAsset->StaminaRegenGameplayEffect->GetName()));
 }
 
 void USKAbilitySystemComponent::StopStaminaRegeneration()
@@ -118,7 +114,41 @@ void USKAbilitySystemComponent::StopStaminaRegeneration()
 
     if (!StaminaRegenActiveGESpecHandle.IsValid())
         UE_LOGFMT(LogSKAbilitySystem, Display, "{Owner} succesfully removed {Effect}", ("Owner", GetOwner()->GetName()),
-                  ("Effect", StaminaRegenGEClass->GetName()));
+                  ("Effect", BasicGameplayEffectsDataAsset->StaminaRegenGameplayEffect->GetName()));
+}
+
+void USKAbilitySystemComponent::StartHealthRegeneration()
+{
+    if (HealthRegenActiveGESpecHandle.IsValid()) return;
+
+    HealthRegenActiveGESpecHandle = ApplyGameplayEffectSpecToSelf(
+        *MakeGESpecHandle(BasicGameplayEffectsDataAsset->HealthRegenGameplayEffect).Data.Get());
+    check(HealthRegenActiveGESpecHandle.IsValid());
+
+    UE_LOGFMT(LogSKAbilitySystem, Display, "{Owner} succesfully applied {Effect}", ("Owner", GetOwner()->GetName()),
+              ("Effect", BasicGameplayEffectsDataAsset->HealthRegenGameplayEffect->GetName()));
+}
+
+void USKAbilitySystemComponent::StopHealthRegeneration()
+{
+    if (!HealthRegenActiveGESpecHandle.IsValid()) return;
+
+    RemoveActiveGameplayEffect(HealthRegenActiveGESpecHandle);
+    HealthRegenActiveGESpecHandle.Invalidate();
+
+    UE_LOGFMT(LogSKAbilitySystem, Display, "{Owner} succesfully removed {Effect}", ("Owner", GetOwner()->GetName()),
+              ("Effect", BasicGameplayEffectsDataAsset->HealthRegenGameplayEffect->GetName()));
+}
+
+void USKAbilitySystemComponent::ApplyFallDamage(const float &FallSpeed)
+{
+    auto EffectSpec = MakeGESpecHandle(BasicGameplayEffectsDataAsset->FallDamageGameplayEffect);
+
+    if (-FallSpeed < LandingSpeedRange.X) return;
+
+    EffectSpec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Character.Data.FallDamage")),
+                                             CalculateFallDamage(FallSpeed));
+    ApplyGameplayEffectSpecToSelf(*EffectSpec.Data.Get());
 }
 
 void USKAbilitySystemComponent::InitAbilities()
@@ -171,4 +201,23 @@ void USKAbilitySystemComponent::InitAbilities()
             }
         }
     }
+}
+
+void USKAbilitySystemComponent::ValidateGEDataAssets() const
+{
+    if (BasicGameplayEffectsDataAsset)
+    {
+        BasicGameplayEffectsDataAsset->ValidateData();
+    }
+    else
+    {
+        UE_LOGFMT(LogSKAbilitySystem, Error, "{Owner} has no Gameplay Effects Data Asset!",
+                  ("Owner", GetOwner()->GetName()));
+        checkNoEntry()
+    }
+}
+
+const float USKAbilitySystemComponent::CalculateFallDamage(const float &FallSpeed)
+{
+    return FMath::GetMappedRangeValueClamped(LandingSpeedRange, LandingDamageRange, -FallSpeed) * -1.0f;
 }
