@@ -3,12 +3,14 @@
 #pragma once
 
 #include "CoreMinimal.h"
+
 #include "GameFramework/CharacterMovementComponent.h"
 
 #include "SKCharacterMovementComponent.generated.h"
 
 class USKAttributeSetSkills;
 class ASKBaseCharacter;
+class USKCharacterComponentBase;
 
 UCLASS()
 class SIRKNIGHT_API USKCharacterMovementComponent : public UCharacterMovementComponent
@@ -26,17 +28,16 @@ class SIRKNIGHT_API USKCharacterMovementComponent : public UCharacterMovementCom
     void StartSprinting();
     void StartWalking();
 
-    const TWeakObjectPtr<ASKBaseCharacter> &GetOwnerSKCharacter() const { return OwnerSKCharacter; }
+    UFUNCTION(BlueprintPure, Category = "SK Character")
+    FORCEINLINE ASKBaseCharacter *GetSKOwnerCharacter() const;
 
-  protected:
   private:
-    TObjectPtr<const USKAttributeSetSkills> AttributeSetSkills;
-
     void HandleRunningSpeed();
 
     // for saving the speed from CMC
     float BaseWalkSpeed;
-    TWeakObjectPtr<ASKBaseCharacter> OwnerSKCharacter = nullptr;
+
+    TObjectPtr<USKCharacterComponentBase> SKCharacterComponentBase;
 
     FCriticalSection CriticalSection;
 };

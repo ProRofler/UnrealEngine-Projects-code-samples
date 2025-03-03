@@ -2,8 +2,12 @@
 
 #pragma once
 
-#include "Components/TimelineComponent.h"
 #include "CoreMinimal.h"
+
+#include "Components/TimelineComponent.h"
+
+#include "Core/Interface/SKInterfaceLockable.h"
+
 #include "Gameplay/Interactables/SKInteractableBase.h"
 
 #include "SKDoorway.generated.h"
@@ -12,7 +16,7 @@ class UCurveFloat;
 class USKLockComponent;
 
 UCLASS()
-class SIRKNIGHT_API ASKDoorway : public ASKInteractableBase
+class SIRKNIGHT_API ASKDoorway : public ASKInteractableBase, public ISKInterfaceLockable
 {
     GENERATED_BODY()
 
@@ -29,7 +33,7 @@ class SIRKNIGHT_API ASKDoorway : public ASKInteractableBase
     UPROPERTY(EditAnywhere, Category = "SK Object settings")
     bool bShowGhostDoor = true;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "SK Object settings")
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SK Object settings")
     TObjectPtr<UStaticMeshComponent> DoorMesh;
 
     UPROPERTY(VisibleAnywhere, Category = "SK Object settings")
@@ -39,6 +43,12 @@ class SIRKNIGHT_API ASKDoorway : public ASKInteractableBase
     TObjectPtr<UStaticMeshComponent> DoorGhostMesh;
 
     FORCEINLINE bool GetIsActive() const { return bIsActive; }
+
+    /********************LOCKABLE INTERFACE*******************************/
+  public:
+    const USKLockComponent *GetLockComponent_Implementation() const { return LockComponent; }
+
+    /*********************************************************************/
 
   protected:
     UPROPERTY(EditAnywhere, Category = "SK Doorway properties")
@@ -54,7 +64,7 @@ class SIRKNIGHT_API ASKDoorway : public ASKInteractableBase
     void HandleDoorAnimation(float Value);
 
     UPROPERTY(VisibleAnywhere, meta = (EditCondition = "bHasLock"))
-    TObjectPtr<USKLockComponent> Lock = nullptr;
+    TObjectPtr<USKLockComponent> LockComponent = nullptr;
 
   private:
     FTimeline DoorTimeline;

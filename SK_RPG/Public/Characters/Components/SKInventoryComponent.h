@@ -2,18 +2,22 @@
 
 #pragma once
 
-#include "Components/ActorComponent.h"
+#include "Characters/Components/SKCharacterComponentBase.h"
+
 #include "CoreMinimal.h"
+#include "UI/Data/SKInventoryObjectData.h"
+
 #include "SKInventoryComponent.generated.h"
 
 class USKInventoryObjectData;
 class ASKBaseCharacter;
+class ASKCollectible;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnItemPickupDelegateSignature, const AActor *, PickedItem);
 DECLARE_DYNAMIC_DELEGATE(FOnInventoryUpdatedSignature);
 
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
-class SIRKNIGHT_API USKInventoryComponent : public UActorComponent
+class SIRKNIGHT_API USKInventoryComponent : public USKCharacterComponentBase
 {
     GENERATED_BODY()
 
@@ -28,7 +32,7 @@ class SIRKNIGHT_API USKInventoryComponent : public UActorComponent
     bool IsInventoryEmpty() const { return InventoryData.IsEmpty(); }
 
     UFUNCTION(BlueprintCallable, Category = "Inventory")
-    bool IsInInventory(const FName &Name) const; // FName version
+    bool IsInInventoryByClass(const TSubclassOf<ASKCollectible> &CollectibleClass) const; // Collectible class overload
 
     UPROPERTY(BlueprintAssignable, Category = "Interactions")
     FOnItemPickupDelegateSignature OnItemPickup;
@@ -41,17 +45,14 @@ class SIRKNIGHT_API USKInventoryComponent : public UActorComponent
     virtual void BeginPlay() override;
 
   private:
-    ASKBaseCharacter *OwningCharacter = nullptr;
 
     UPROPERTY()
     TArray<TObjectPtr<USKInventoryObjectData>> InventoryData;
 
     TObjectPtr<USKInventoryObjectData> CreateInventoryObjectDataItem(const AActor *Item);
-
+    USKInventoryObjectData *FindInventoryItem(const USKInventoryObjectData *ObjectData);
     void SortInventory();
 
-    ASKBaseCharacter *GetOwningCharacter();
     void InitDelegates();
 
-    USKInventoryObjectData *FindInventoryItem(const USKInventoryObjectData *ObjectData);
 };

@@ -1,15 +1,22 @@
 // Copyright (c) 2024. Sir Knight title is a property of Quantinum ltd. All rights reserved.
 
 #include "UI/Widgets/SKInventoryWidget.h"
+
 #include "Characters/Components/SKInventoryComponent.h"
 #include "Characters/SKPlayerCharacter.h"
+
 #include "Components/ListView.h"
-#include "Core/SKLogCategories.h"
-#include "Logging/StructuredLog.h"
+
 #include "Gameplay/Interactables/SKCollectible.h"
+
 #include "UI/Data/SKInventoryObjectData.h"
 #include "UI/SKPlayerHUD.h"
 #include "UI/Widgets/SKItemListEntry.h"
+
+#include "Core/SKLogCategories.h"
+#include "Logging/StructuredLog.h"
+
+#include "Core/Interface/SKInterfaceCharacter.h"
 
 void USKInventoryWidget::NativeConstruct()
 {
@@ -29,7 +36,8 @@ void USKInventoryWidget::UpdateInventoryWidget()
     if (InventoryList->GetListItems().IsEmpty())
     {
         const auto playerInventoryData =
-            GetSKPlayerHud()->GetSKPlayerCharacter()->GetInventoryComponent()->GetInventoryData();
+            ISKInterfaceCharacter::Execute_GetInventoryComponent(GetSKPlayerHud()->GetSKPlayerCharacter())
+                ->GetInventoryData();
 
         for (const auto &itemData : playerInventoryData)
         {
@@ -92,8 +100,9 @@ void USKInventoryWidget::HandleEntryWidgetReleased(UUserWidget &EntryWidget)
 /********************** UTILS ***********************/
 void USKInventoryWidget::InitDelegates()
 {
-    GetSKPlayerHud()->GetSKPlayerCharacter()->GetInventoryComponent()->OnInventoryUpdated.BindDynamic(
-        this, &USKInventoryWidget::MarkForUpdate);
+    ISKInterfaceCharacter::Execute_GetInventoryComponent(GetSKPlayerHud()->GetSKPlayerCharacter())
+        ->OnInventoryUpdated.BindDynamic(this, &USKInventoryWidget::MarkForUpdate);
+
     InventoryList->OnEntryWidgetGenerated().AddUObject(this, &USKInventoryWidget::HandleEntryWidgetGenerated);
     InventoryList->OnEntryWidgetReleased().AddUObject(this, &USKInventoryWidget::HandleEntryWidgetReleased);
 }

@@ -4,12 +4,6 @@
 #include "Core/SKLogCategories.h"
 #include "Logging/StructuredLog.h"
 
-void ASKKeyItem::BeginPlay()
-{
-    Super::BeginPlay();
+ASKKeyItem::ASKKeyItem() { SetCollectibleType(ECollectibleType::Key); }
 
-    if (KeyID == TEXT("None"))
-    {
-        UE_LOGFMT(LogSKInteractions, Warning, "{1} key ID is None, is this intentional?", ("1", GetName()));
-    }
-}
+void ASKKeyItem::BeginPlay() { Super::BeginPlay(); }

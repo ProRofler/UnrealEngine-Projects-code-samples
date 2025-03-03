@@ -57,11 +57,11 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     UFUNCTION(BlueprintPure)
     FORCEINLINE float GetHealthPercent() const;
 
-    UFUNCTION(BlueprintCallable, Category = "SK Attributes")
+    UFUNCTION(BlueprintCallable, Category = "SK Character|Attributes")
     bool IsStaminaFull() const;
-    UFUNCTION(BlueprintCallable, Category = "SK Attributes")
+    UFUNCTION(BlueprintCallable, Category = "SK Character|Attributes")
     bool IsHeathFull() const;
-    UFUNCTION(BlueprintCallable, Category = "SK Attributes")
+    UFUNCTION(BlueprintCallable, Category = "SK Character|Attributes")
     bool IsDead() const;
 
     UFUNCTION()
@@ -98,17 +98,17 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     void TryJumping();
     UFUNCTION(BlueprintCallable)
     void TrySprinting();
-    UFUNCTION(BlueprintPure, Category = "SK Character movement")
+    UFUNCTION(BlueprintPure, Category = "SK Character|movement")
     float GetCharacterMovementAngle() const;
 
-    UFUNCTION(BlueprintPure, Category = "SK Character movement")
+    UFUNCTION(BlueprintPure, Category = "SK Character|movement")
     bool IsMovingForward() const;
 
     virtual void Landed(const FHitResult &Hit);
 
-    UPROPERTY(BlueprintAssignable, Category = "SK Events")
+    UPROPERTY(BlueprintAssignable, Category = "SK Character|Events")
     FOnStartedSprintingSignature OnStartedSprinting;
-    UPROPERTY(BlueprintAssignable, Category = "SK Events")
+    UPROPERTY(BlueprintAssignable, Category = "SK Character|Events")
     FOnStartedRunningSignature OnStartedRunning;
 
     FOnStaminaChangedSignature OnStaminaChanged;
@@ -121,6 +121,10 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     /************************************ State  ******************************************/
   public:
     bool IsCharacterMoving() const;
+    virtual bool CanJumpInternal_Implementation() const override;
+
+    UFUNCTION(BlueprintPure, Category = "SK Character|State")
+    bool CanSprint(uint8 RequiredStaminaPercentage = 25) const;
 
   protected:
     virtual void HandleIdling();
@@ -129,14 +133,12 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
 
     /************************************ Interactions  ******************************************/
   public:
-    UFUNCTION(BlueprintCallable, Category = "SK Interactions")
+    UFUNCTION(BlueprintCallable, Category = "SK Character|Interactions")
     const AActor *GetInteractionTarget() const { return InteractionTarget.Get(); }
 
   protected:
     UPROPERTY(BlueprintReadWrite)
     TObjectPtr<UCapsuleComponent> InteractionZone;
-    UPROPERTY(BlueprintReadWrite)
-    TObjectPtr<USKInventoryComponent> Inventory;
 
     TSet<AActor *> InteractablesInVicinity;
     TWeakObjectPtr<AActor> InteractionTarget;
@@ -153,13 +155,15 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
 
     /************************************ COMPONENTS  ******************************************/
   public:
-    FORCEINLINE const TObjectPtr<USKInventoryComponent> &GetInventoryComponent() const { return Inventory; }
+    USKInventoryComponent *GetInventoryComponent_Implementation() const { return InventoryComponent; };
     virtual UAbilitySystemComponent *GetAbilitySystemComponent() const override;
 
   protected:
     TObjectPtr<USKCharacterMovementComponent> MovementComponent;
+    UPROPERTY(VisibleAnywhere, Category = "SK Character|Inventory")
+    TObjectPtr<USKInventoryComponent> InventoryComponent;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SK GAS", meta = (AllowPrivateAccess = "true"))
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SK Character|GAS", meta = (AllowPrivateAccess = "true"))
     TObjectPtr<USKAbilitySystemComponent> AbilitySystemComponent;
     TObjectPtr<const USKAttributeSet> AttributeSet;
     TObjectPtr<const USKAttributeSetSkills> AttributeSetSkills;

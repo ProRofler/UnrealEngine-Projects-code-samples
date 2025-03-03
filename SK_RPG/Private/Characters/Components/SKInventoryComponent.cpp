@@ -3,35 +3,34 @@
 #include "Characters/Components/SKInventoryComponent.h"
 #include "Characters/SKBaseCharacter.h"
 #include "Core/Interface/SKInterfaceInteractable.h"
-#include "Core/SKLogCategories.h"
+
 #include "Gameplay/Interactables/SKCollectible.h"
+#include "Gameplay/Interactables/SKKeyItem.h"
+
+#include "Core/SKLogCategories.h"
 #include "Logging/StructuredLog.h"
-#include "UI/Data/SKInventoryObjectData.h"
 
 /********************* DEFAULT *********************/
-USKInventoryComponent::USKInventoryComponent()
-{
-    PrimaryComponentTick.bCanEverTick = false;
+USKInventoryComponent::USKInventoryComponent() { PrimaryComponentTick.bCanEverTick = false; }
 
-    UE_LOGFMT(LogTemp, Warning, "Inventory created");
-}
-
-void USKInventoryComponent::BeginPlay()
-{
-    Super::BeginPlay();
-    OwningCharacter = GetOwningCharacter();
-    // InitDelegates();
-}
+void USKInventoryComponent::BeginPlay() { Super::BeginPlay(); }
 
 /********************* Items handling *********************/
 void USKInventoryComponent::AddToInventory(AActor *PickedItem)
 {
     auto itemData = CreateInventoryObjectDataItem(PickedItem);
+    if (!itemData)
+    {
+        UE_LOGFMT(LogSKInteractions, Error, "Actor: {0} failed to generate inventory item: \"{1}\", of class: {2}",
+                  GetSKOwnerCharacter()->GetName(), PickedItem->GetName(), PickedItem->GetClass()->GetName());
+
+        checkNoEntry();
+    }
 
     if (auto item = FindInventoryItem(itemData))
     {
         UE_LOG(LogTemp, Display, TEXT("Found in inventory"));
-        item->IncreaseItemQuantity(itemData->GetItemQuantity());
+        item->ChangeItemQuantity(itemData->GetItemQuantity());
     }
     else
     {
@@ -52,7 +51,7 @@ void USKInventoryComponent::AddToInventory(AActor *PickedItem)
     }
 
     UE_LOGFMT(LogSKInteractions, Display, "Actor: {0} picked up item: \"{1}\", of class: {2}",
-              OwningCharacter->GetName(), itemData->GetItemName(), itemData->GetItemClass()->GetName());
+              GetSKOwnerCharacter()->GetName(), itemData->GetItemName(), itemData->GetItemClass()->GetName());
 }
 
 void USKInventoryComponent::RemoveFromInventory(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop)
@@ -72,7 +71,7 @@ void USKInventoryComponent::RemoveFromInventory(USKInventoryObjectData *ItemToRe
     else
     {
         auto i = InventoryData.Find(ItemToRemove);
-        InventoryData[i]->DecreaseItemQuantity(QuantityToDrop);
+        InventoryData[i]->ChangeItemQuantity(-QuantityToDrop);
     }
 
     OnInventoryUpdated.ExecuteIfBound();
@@ -80,11 +79,11 @@ void USKInventoryComponent::RemoveFromInventory(USKInventoryObjectData *ItemToRe
     UE_LOGFMT(LogSKInteractions, Display, "Actor: {0} Dropped item: {1}", this->GetName(), ItemToRemove->GetName());
 }
 
-bool USKInventoryComponent::IsInInventory(const FName &Name) const
+bool USKInventoryComponent::IsInInventoryByClass(const TSubclassOf<ASKCollectible> &CollectibleClass) const
 {
     for (const auto item : InventoryData)
     {
-        if (item->GetItemName() == Name) return true;
+        if (item->GetItemClass() == CollectibleClass) return true;
     }
 
     return false;
@@ -97,18 +96,15 @@ TObjectPtr<USKInventoryObjectData> USKInventoryComponent::CreateInventoryObjectD
     auto originaItem = Cast<ASKCollectible>(Item);
     if (!originaItem) return nullptr;
 
-    if (TObjectPtr<USKInventoryObjectData> newInventoryItem = NewObject<USKInventoryObjectData>(this))
+    if (USKInventoryObjectData *newInventoryItem = NewObject<USKInventoryObjectData>(this))
     {
         newInventoryItem->InitializeItemData(originaItem->GetInteractableName(), originaItem->GetItemQuantity(),
-                                             originaItem->GetClass());
+                                             originaItem->GetClass(), originaItem->GetCollectibleType());
+
         return newInventoryItem;
     }
-    else
-    {
-        UE_LOGFMT(LogSKInteractions, Display, "Actor: {0} failed to generate inventory item: \"{1}\", of class: {2}",
-                  OwningCharacter->GetName(), originaItem->GetName(), originaItem->GetClass()->GetName());
-        return nullptr;
-    }
+
+    return nullptr;
 }
 
 void USKInventoryComponent::SortInventory()
@@ -127,20 +123,6 @@ void USKInventoryComponent::SortInventory()
     });
 }
 
-/********************* Initialization *********************/
-ASKBaseCharacter *USKInventoryComponent::GetOwningCharacter()
-{
-    auto owner = GetOwner();
-    auto castToChar = Cast<ASKBaseCharacter>(owner);
-    ensureMsgf(castToChar, TEXT("No owner found!"));
-    return castToChar;
-}
-
-void USKInventoryComponent::InitDelegates()
-{
-    // OwningCharacter->OnItemPickup.AddDynamic(this, &USKInventoryComponent::AddToInventory);
-}
-
 USKInventoryObjectData *USKInventoryComponent::FindInventoryItem(const USKInventoryObjectData *ObjectData)
 {
     for (auto &Data : InventoryData)
@@ -153,4 +135,11 @@ USKInventoryObjectData *USKInventoryComponent::FindInventoryItem(const USKInvent
         }
     }
     return nullptr;
+}
+
+/********************* Initialization *********************/
+
+void USKInventoryComponent::InitDelegates()
+{
+    // OwningCharacter->OnItemPickup.AddDynamic(this, &USKInventoryComponent::AddToInventory);
 }

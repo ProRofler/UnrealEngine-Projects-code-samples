@@ -9,6 +9,7 @@
 
 #include "Core/Interface/SKInterfaceInteractable.h"
 #include "Core/SKCoreTypes.h"
+#include "Gameplay/Interactables/SKKeyItem.h"
 
 #include "Gameplay/GAS/SKAbilitySystemComponent.h"
 #include "Gameplay/GAS/SKCommonGameplayTagsLib.h"
@@ -302,21 +303,21 @@ void ASKPlayerCharacter::DropItem(USKInventoryObjectData *ItemToRemove, const in
 
     if (TraceFromCamera(dropPosition, 150.0f))
     {
-        AActor *SpawnedItem = GetWorld()->SpawnActor<AActor>(ItemToRemove->GetItemClass(), dropPosition.ImpactPoint,
-                                                             dropPosition.ImpactNormal.Rotation());
+        AActor *SpawnedItem = GetWorld()->SpawnActor<AActor>(
+            ItemToRemove->GetItemClass(), dropPosition.ImpactPoint + (dropPosition.ImpactNormal * 25.0f),
+            GetActorForwardVector().Rotation());
     }
     else
     {
         FTransform spawnTransform;
 
-        spawnTransform.SetRotation((GetActorForwardVector().Rotation() + FRotator(0.0f, 270.0f, 90.0f)).Quaternion());
+        spawnTransform.SetRotation((GetActorForwardVector().Rotation().Quaternion()));
         spawnTransform.SetLocation(dropPosition.TraceEnd);
 
         ASKCollectible *SpawnedItem =
             GetWorld()->SpawnActorDeferred<ASKCollectible>(ItemToRemove->GetItemClass(), spawnTransform);
         if (SpawnedItem)
         {
-            SpawnedItem->SetInteractableName(ItemToRemove->GetItemName());
             SpawnedItem->FinishSpawning(spawnTransform);
         }
         else
@@ -326,7 +327,7 @@ void ASKPlayerCharacter::DropItem(USKInventoryObjectData *ItemToRemove, const in
         }
     }
 
-    Inventory->RemoveFromInventory(ItemToRemove, QuantityToDrop);
+    InventoryComponent->RemoveFromInventory(ItemToRemove, QuantityToDrop);
 }
 
 bool ASKPlayerCharacter::CanGrabItem()

@@ -10,10 +10,10 @@ void USKPhysicsHandleComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    Player = Cast<ASKPlayerCharacter>(GetOwner());
+    Player = CastChecked<ASKPlayerCharacter>(GetOwner());
 }
 
-void USKPhysicsHandleComponent::GrabItem(UPrimitiveComponent* ComponentToGrab)
+void USKPhysicsHandleComponent::GrabItem(UPrimitiveComponent *ComponentToGrab)
 {
     if (!ComponentToGrab) return;
 
@@ -44,7 +44,7 @@ void USKPhysicsHandleComponent::UpdateGrabLocation()
             FVector GrabLocation;
             FHitResult HitResult_loc;
 
-            if (Player->TraceFromCamera(HitResult_loc, Player->GrabDistance,GrabbedComponent))
+            if (Player->TraceFromCamera(HitResult_loc, Player->GrabDistance, GrabbedComponent))
                 GrabLocation = HitResult_loc.ImpactPoint;
             else
                 GrabLocation = HitResult_loc.TraceEnd;
@@ -79,13 +79,13 @@ void USKPhysicsHandleComponent::RotateGrabbedComponent(const FVector2D &Input)
     FRotator HandleRot;
     GetTargetLocationAndRotation(HandleLoc, HandleRot);
 
-    HandleRot.Roll += Input.Y;
+    HandleRot.Roll = 0.0f;
     HandleRot.Yaw += Input.X;
-    HandleRot.Pitch = 0.0f;
+    HandleRot.Pitch += Input.Y;
 
-    InitialRelativeRotation.Roll += Input.Y;
+    InitialRelativeRotation.Roll = 0.0f;
     InitialRelativeRotation.Yaw += Input.X;
-    InitialRelativeRotation.Pitch = 0.0f;
+    InitialRelativeRotation.Pitch += Input.Y;
 
     SetTargetRotation(HandleRot);
 }

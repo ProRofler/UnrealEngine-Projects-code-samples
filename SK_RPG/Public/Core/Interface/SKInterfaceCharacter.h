@@ -7,6 +7,8 @@
 
 #include "SKInterfaceCharacter.generated.h"
 
+class USKInventoryComponent;
+
 UINTERFACE(MinimalAPI)
 class USKInterfaceCharacter : public UInterface
 {
@@ -17,8 +19,7 @@ class SIRKNIGHT_API ISKInterfaceCharacter
 {
     GENERATED_BODY()
 
-    // Add interface functions to this class. This is the class that will be inherited to implement this interface.
   public:
-    // UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Implemented interfaces")
-    // void AddToInventory(const AActor* Item);
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Character interface")
+    USKInventoryComponent *GetInventoryComponent() const;
 };

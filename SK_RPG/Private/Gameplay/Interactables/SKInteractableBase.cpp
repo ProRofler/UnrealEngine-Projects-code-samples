@@ -19,9 +19,16 @@ ASKInteractableBase::ASKInteractableBase()
 
     BaseMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     BaseMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
+
+    InteractableID = FGuid::NewGuid();
 }
 
-void ASKInteractableBase::BeginPlay() { Super::BeginPlay(); }
+void ASKInteractableBase::BeginPlay()
+{
+    Super::BeginPlay();
+
+    // check and set unique ID
+}
 
 #if !UE_BUILD_SHIPPING
 void ASKInteractableBase::Tick(float DeltaSeconds)

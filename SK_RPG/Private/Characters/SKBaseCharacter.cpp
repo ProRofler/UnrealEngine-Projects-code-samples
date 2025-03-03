@@ -43,7 +43,7 @@ ASKBaseCharacter::ASKBaseCharacter(const FObjectInitializer &ObjectInitializer)
 
     // Components
     MovementComponent = Cast<USKCharacterMovementComponent>(GetCharacterMovement());
-    Inventory = CreateDefaultSubobject<USKInventoryComponent>("Inventory component");
+    InventoryComponent = CreateDefaultSubobject<USKInventoryComponent>("Inventory component");
 
     // GAS
     AbilitySystemComponent = CreateDefaultSubobject<USKAbilitySystemComponent>("Ability system component");
@@ -140,7 +140,7 @@ void ASKBaseCharacter::HandleStaminaChange(const float ChangedAmount)
     }
     else
     {
-        if (IsStaminaFull())
+        if (IsStaminaFull() || IsDead())
         {
             GetWorldTimerManager().ClearTimer(StaminaRegenTimerHandle);
             AbilitySystemComponent->StopStaminaRegeneration();
@@ -292,10 +292,11 @@ void ASKBaseCharacter::TryWalking()
 void ASKBaseCharacter::TryJumping()
 {
 
-    if (AbilitySystemComponent->CheckAndAddGameplayTag(USKCommonGameplayTagsLib::GetTag_WantsToJump()))
+    if (CanJump() && AbilitySystemComponent->CheckAndAddGameplayTag(USKCommonGameplayTagsLib::GetTag_WantsToJump()))
     {
         if (!AbilitySystemComponent->TryActivateAbilitiesByTag(
                 USKCommonGameplayTagsLib::GetTag_WantsToJump().GetSingleTagContainer()))
+
             AbilitySystemComponent->CheckAndRemoveGameplayTag(USKCommonGameplayTagsLib::GetTag_WantsToJump());
     }
 }
@@ -368,6 +369,28 @@ void ASKBaseCharacter::TryDrawWeapon()
 bool ASKBaseCharacter::IsCharacterMoving() const
 {
     return !GetVelocity().IsNearlyZero() && !MovementComponent->IsFalling();
+}
+
+bool ASKBaseCharacter::CanJumpInternal_Implementation() const
+{
+    const bool isEnoughStamina = GetAbilitySystemComponent()->GetSet<USKAttributeSet>()->GetStamina() > 15.0f;
+
+    return Super::CanJumpInternal_Implementation() && isEnoughStamina;
+}
+
+bool ASKBaseCharacter::CanSprint(uint8 RequiredStaminaPercentage) const
+{
+    if (RequiredStaminaPercentage > 100 || RequiredStaminaPercentage < 1)
+    {
+        RequiredStaminaPercentage = FMath::Clamp(RequiredStaminaPercentage, 1, 100);
+        UE_LOGFMT(LogSKCharacterMovement, Warning,
+                  "In {1}'s {2} function provided argumemnt was automatically clamped to fit 1 to 100 range",
+                  ("1", GetName()), ("2", GET_FUNCTION_NAME_CHECKED(ASKBaseCharacter, CanSprint)));
+    }
+
+    const bool isEnoughStamina = GetStaminaPercent() >= (float)RequiredStaminaPercentage / 100.0f;
+
+    return isEnoughStamina && IsMovingForward() && !GetMovementComponent()->IsFalling();
 }
 
 void ASKBaseCharacter::HandleIdling() // adds idle tag and stops sprinting
@@ -465,7 +488,7 @@ void ASKBaseCharacter::Interact()
         {
             if (InteractionTarget->Implements<USKInterfaceCollectible>())
             {
-                Inventory->AddToInventory(InteractionTarget.Get());
+                InventoryComponent->AddToInventory(InteractionTarget.Get());
             }
 
             if (!AbilitySystemComponent->TryActivateAbilitiesByTag(wantToInteractTag.GetSingleTagContainer()))

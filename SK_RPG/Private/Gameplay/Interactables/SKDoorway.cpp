@@ -1,10 +1,17 @@
 // Copyright (c) 2024. Sir Knight title is a property of Quantinum ltd. All rights reserved.
 
 #include "Gameplay/Interactables/SKDoorway.h"
-#include "Core/SKLogCategories.h"
+
 #include "Curves/CurveFloat.h"
+
 #include "Gameplay/Interactables/Components/SKLockComponent.h"
 #include "Gameplay/Interactables/SKActivator.h"
+
+#include "Gameplay/Interactables/SKKeyItem.h"
+
+#include "Core/Interface/SKInterfaceCharacter.h"
+
+#include "Core/SKLogCategories.h"
 #include "Logging/StructuredLog.h"
 
 ASKDoorway::ASKDoorway()
@@ -75,27 +82,27 @@ void ASKDoorway::OnConstruction(const FTransform &Transform)
     if (bRemoteActivationOnly)
     {
         bHasLock = false;
-        if (Lock) Lock->DestroyComponent();
+        if (LockComponent) LockComponent->DestroyComponent();
     }
 
     if (bHasLock)
     {
-        if (!Lock)
+        if (!LockComponent)
         {
-            Lock = NewObject<USKLockComponent>(this);
-            if (Lock)
+            LockComponent = NewObject<USKLockComponent>(this);
+            if (LockComponent)
             {
-                Lock->RegisterComponent();
-                SetFlags(RF_Transactional); // Do I need this?
+                LockComponent->RegisterComponent();
+                LockComponent->SetFlags(RF_Transactional); // Do I need this?
             }
         }
     }
     else
     {
-        if (Lock)
+        if (LockComponent)
         {
-            Lock->DestroyComponent();
-            Lock = nullptr;
+            LockComponent->DestroyComponent();
+            LockComponent = nullptr;
         }
     }
 }
@@ -104,10 +111,24 @@ void ASKDoorway::OnInteraction_Implementation(const AActor *TriggeredActor)
 {
     if (bRemoteActivationOnly && !Cast<ASKActivator>(TriggeredActor)) return;
 
-    if (bHasLock && Lock)
-        if (!Lock->TryUnlocking(TriggeredActor)) return;
+    if (TriggeredActor->Implements<USKInterfaceCharacter>())
 
-    HandleDoorOpenClose();
+        if (bHasLock && LockComponent)
+        {
+            if (LockComponent->IsLocked())
+            {
+                if (!LockComponent->TryUnlocking(TriggeredActor)) return;
+            }
+        }
+
+    if (bHasLock && LockComponent)
+    {
+        if (!LockComponent->IsLocked()) HandleDoorOpenClose();
+    }
+    else
+    {
+        HandleDoorOpenClose();
+    }
 
     if (bEnableLogging)
     {

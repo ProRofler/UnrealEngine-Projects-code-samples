@@ -6,6 +6,8 @@
 #include "CoreMinimal.h"
 #include "SKLockComponent.generated.h"
 
+class ASKKeyItem;
+
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SIRKNIGHT_API USKLockComponent : public UActorComponent
 {
@@ -14,10 +16,9 @@ class SIRKNIGHT_API USKLockComponent : public UActorComponent
   public:
     USKLockComponent();
 
-    FORCEINLINE const bool GetIsLocked() const { return bIsLocked; }
+    UFUNCTION()
+    const FORCEINLINE bool IsLocked() const { return bIsLocked; }
     const bool TryUnlocking(const AActor *UnlockInitiator);
-
-    FORCEINLINE const FName &GetKeyID() const { return KeyID; }
 
   protected:
     virtual void BeginPlay() override;
@@ -26,8 +27,8 @@ class SIRKNIGHT_API USKLockComponent : public UActorComponent
     bool bIsLocked = true;
 
     UPROPERTY(EditInstanceOnly, Category = "SK Lock Settings")
-    FName KeyID = TEXT("None"); // For now interactable name == key ID
+    TSubclassOf<ASKKeyItem> KeyClass;
 
   private:
-    void Unlock() { bIsLocked = false; };
+    void Unlock(const AActor *UnlockInitiator) { bIsLocked = false; };
 };

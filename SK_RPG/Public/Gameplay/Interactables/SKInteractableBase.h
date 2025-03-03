@@ -3,6 +3,7 @@
 #pragma once
 
 #include "Core/Interface/SKInterfaceInteractable.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 
@@ -18,7 +19,7 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
   public:
     ASKInteractableBase();
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "SK Object settings")
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite, Category = "SK Object settings")
     TObjectPtr<UStaticMeshComponent> BaseMesh;
 
     virtual void OnInteraction_Implementation(const AActor *TriggeredActor) override;
@@ -28,7 +29,7 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
 #endif
 
 #if WITH_EDITORONLY_DATA
-    UPROPERTY(EditAnywhere, Category = "SK Debug")
+    UPROPERTY(EditAnywhere, Category = "SK Debugging|Debug drawing ")
     bool bDrawCenterSphere = false;
 #endif
 
@@ -37,12 +38,18 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
     FORCEINLINE FName GetInteractableName() const { return InteractableName; }
 
     UFUNCTION(BlueprintCallable)
-    void SetInteractableName(const FName &ItemName) { InteractableName = ItemName; };
+    const FORCEINLINE FGuid GetInteractableID() const { return InteractableID; }
+
+    //UFUNCTION(BlueprintCallable)
+    //void SetInteractableName(const FName &ItemName) { InteractableName = ItemName; };
 
   protected:
     virtual void BeginPlay() override;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SK Base properties | Interactables")
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SK Base properties | Interactables")
+    FGuid InteractableID;
+
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SK Base properties | Interactables")
     FName InteractableName = TEXT("_DEFAULT_NAME_");
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SK Base properties | Interactables")
@@ -60,4 +67,5 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
     bool bEnableLogging = true;
 
     void DrawCenter();
+
 };

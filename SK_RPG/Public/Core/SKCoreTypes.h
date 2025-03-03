@@ -2,8 +2,14 @@
 
 #pragma once
 
-struct FCharacterAttributes
+#include "CoreMinimal.h"
+
+#include "SKCoreTypes.generated.h"
+
+UENUM(BlueprintType)
+enum class ECollectibleType : uint8
 {
-    // skills
-    float Athletics = 65.0f;
+    Weapon UMETA(DisplayName = "Weapon"),
+    Key UMETA(DisplayName = "Key"),
+    Misc UMETA(DisplayName = "Misc")
 };

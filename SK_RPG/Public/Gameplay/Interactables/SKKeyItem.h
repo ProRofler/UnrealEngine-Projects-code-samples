@@ -12,8 +12,7 @@ class SIRKNIGHT_API ASKKeyItem : public ASKCollectible
     GENERATED_BODY()
 
   public:
-    UPROPERTY(EditInstanceOnly, Category = "SK Lock Settings")
-    FString KeyID = TEXT("None");
+    ASKKeyItem();
 
   protected:
     virtual void BeginPlay() override;
