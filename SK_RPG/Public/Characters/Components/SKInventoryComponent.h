@@ -20,39 +20,47 @@ UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class SIRKNIGHT_API USKInventoryComponent : public USKCharacterComponentBase
 {
     GENERATED_BODY()
+    friend ASKBaseCharacter;
 
   public:
     USKInventoryComponent();
 
-    UFUNCTION(BlueprintCallable, Category = "Inventory")
+    UFUNCTION(BlueprintCallable, Category = "SK Inventory Component")
     void AddToInventory(AActor *PickedItem);
-    UFUNCTION(BlueprintCallable, Category = "Inventory")
-    void RemoveFromInventory(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop);
-    UFUNCTION(BlueprintCallable, Category = "Inventory")
+    bool RemoveFromInventory(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop);
+    UFUNCTION(BlueprintCallable, Category = "SK Inventory Component")
     bool IsInventoryEmpty() const { return InventoryData.IsEmpty(); }
 
-    UFUNCTION(BlueprintCallable, Category = "Inventory")
-    bool IsInInventoryByClass(const TSubclassOf<ASKCollectible> &CollectibleClass) const; // Collectible class overload
+    USKInventoryObjectData *FindInInventoryByClass(const TSubclassOf<ASKCollectible> &CollectibleClass) const;
 
-    UPROPERTY(BlueprintAssignable, Category = "Interactions")
+    UPROPERTY(BlueprintAssignable, Category = "SK Inventory Component|Events")
     FOnItemPickupDelegateSignature OnItemPickup;
-    UPROPERTY(BlueprintReadOnly, Category = "Interactions")
+    UPROPERTY(BlueprintReadOnly, Category = "SK Inventory Component|Events")
     FOnInventoryUpdatedSignature OnInventoryUpdated;
 
-    TArray<TObjectPtr<USKInventoryObjectData>> &GetInventoryData() { return InventoryData; }
+    UFUNCTION(BlueprintPure, Category = "SK Inventory Component|Weapon slots")
+    FORCEINLINE TArray<USKInventoryObjectData *> &GetInventoryData() { return InventoryData; }
+
+    UFUNCTION(BlueprintPure, Category = "SK Inventory Component|Weapon slots")
+    FORCEINLINE USKInventoryObjectData *GetMainWeaponSlot() { return MainWeaponSlot; }
+
+    UFUNCTION(BlueprintCallable, Category = "SK Weapon Component")
+    void HandleEquip(USKInventoryObjectData *ObjectData);
 
   protected:
     virtual void BeginPlay() override;
 
   private:
+    void SetMainWeaponSlot(USKInventoryObjectData *ObjectData) { MainWeaponSlot = ObjectData; }
 
     UPROPERTY()
-    TArray<TObjectPtr<USKInventoryObjectData>> InventoryData;
+    TArray<USKInventoryObjectData *> InventoryData;
 
-    TObjectPtr<USKInventoryObjectData> CreateInventoryObjectDataItem(const AActor *Item);
-    USKInventoryObjectData *FindInventoryItem(const USKInventoryObjectData *ObjectData);
+    USKInventoryObjectData *CreateInventoryObjectDataItem(const AActor *Item);
+    USKInventoryObjectData *SplitInventoryObjectData(USKInventoryObjectData *ObjectData, const uint32 SplitAmount);
+    USKInventoryObjectData * FindInventoryItem(USKInventoryObjectData * ObjectData);
     void SortInventory();
 
-    void InitDelegates();
-
+    UPROPERTY()
+    TObjectPtr<USKInventoryObjectData> MainWeaponSlot = nullptr;
 };

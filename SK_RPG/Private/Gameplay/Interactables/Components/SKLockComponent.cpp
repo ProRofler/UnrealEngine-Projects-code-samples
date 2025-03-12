@@ -16,10 +16,10 @@ USKLockComponent::USKLockComponent() { PrimaryComponentTick.bCanEverTick = false
 
 const bool USKLockComponent::TryUnlocking(const AActor *UnlockInitiator)
 {
-    const bool hasKey =
-        ISKInterfaceCharacter::Execute_GetInventoryComponent(UnlockInitiator)->IsInInventoryByClass(KeyClass);
+    const auto requiredKeyClass =
+        ISKInterfaceCharacter::Execute_GetInventoryComponent(UnlockInitiator)->FindInInventoryByClass(KeyClass);
 
-    if (hasKey)
+    if (requiredKeyClass)
     {
         Unlock(UnlockInitiator);
         return true;

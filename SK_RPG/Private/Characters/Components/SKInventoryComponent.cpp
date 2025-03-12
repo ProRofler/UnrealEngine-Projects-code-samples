@@ -13,6 +13,46 @@
 /********************* DEFAULT *********************/
 USKInventoryComponent::USKInventoryComponent() { PrimaryComponentTick.bCanEverTick = false; }
 
+void USKInventoryComponent::HandleEquip(USKInventoryObjectData *ObjectData)
+{
+    if (!ObjectData) return;
+
+    if (ObjectData == GetMainWeaponSlot())
+    {
+        if (auto item = FindInInventoryByClass(ObjectData->GetItemClass()))
+        {
+            item->ChangeItemQuantity(ObjectData->GetItemQuantity());
+        }
+        else
+        {
+            InventoryData.Add(ObjectData);
+        }
+
+        SetMainWeaponSlot(nullptr);
+    }
+    else
+    {
+        if (GetMainWeaponSlot())
+        {
+            if (auto item = FindInInventoryByClass(GetMainWeaponSlot()->GetItemClass()))
+            {
+                item->ChangeItemQuantity(GetMainWeaponSlot()->GetItemQuantity());
+            }
+            else
+            {
+                InventoryData.Add(GetMainWeaponSlot());
+            }
+
+            SetMainWeaponSlot(nullptr);
+        }
+
+        auto itemToEquip = SplitInventoryObjectData(ObjectData, 1);
+        SetMainWeaponSlot(itemToEquip);
+    }
+
+    OnInventoryUpdated.ExecuteIfBound();
+}
+
 void USKInventoryComponent::BeginPlay() { Super::BeginPlay(); }
 
 /********************* Items handling *********************/
@@ -54,9 +94,10 @@ void USKInventoryComponent::AddToInventory(AActor *PickedItem)
               GetSKOwnerCharacter()->GetName(), itemData->GetItemName(), itemData->GetItemClass()->GetName());
 }
 
-void USKInventoryComponent::RemoveFromInventory(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop)
+bool USKInventoryComponent::RemoveFromInventory(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop)
 {
-    if (!ItemToRemove) return;
+    if (!ItemToRemove) return false;
+    if (ItemToRemove == GetMainWeaponSlot()) return false;
 
     if (ItemToRemove->GetItemQuantity() - QuantityToDrop <= 0)
     {
@@ -77,19 +118,22 @@ void USKInventoryComponent::RemoveFromInventory(USKInventoryObjectData *ItemToRe
     OnInventoryUpdated.ExecuteIfBound();
 
     UE_LOGFMT(LogSKInteractions, Display, "Actor: {0} Dropped item: {1}", this->GetName(), ItemToRemove->GetName());
+
+    return true;
 }
 
-bool USKInventoryComponent::IsInInventoryByClass(const TSubclassOf<ASKCollectible> &CollectibleClass) const
+USKInventoryObjectData *USKInventoryComponent::FindInInventoryByClass(
+    const TSubclassOf<ASKCollectible> &CollectibleClass) const
 {
-    for (const auto item : InventoryData)
+    for (auto item : InventoryData)
     {
-        if (item->GetItemClass() == CollectibleClass) return true;
+        if (item->GetItemClass() == CollectibleClass) return item;
     }
 
-    return false;
+    return nullptr;
 }
 
-TObjectPtr<USKInventoryObjectData> USKInventoryComponent::CreateInventoryObjectDataItem(const AActor *Item)
+USKInventoryObjectData *USKInventoryComponent::CreateInventoryObjectDataItem(const AActor *Item)
 {
     if (!Item) return nullptr;
 
@@ -105,6 +149,40 @@ TObjectPtr<USKInventoryObjectData> USKInventoryComponent::CreateInventoryObjectD
     }
 
     return nullptr;
+}
+
+USKInventoryObjectData *USKInventoryComponent::SplitInventoryObjectData(USKInventoryObjectData *ObjectData,
+                                                                        const uint32 SplitAmount)
+{
+    auto objectData = FindInventoryItem(ObjectData);
+    if (!objectData) return nullptr;
+
+    const uint32 itemQuantity = objectData->GetItemQuantity();
+
+    if (SplitAmount > itemQuantity) return nullptr;
+
+    if (itemQuantity == 1)
+    {
+        RemoveFromInventory(objectData, 1);
+        if (!OnInventoryUpdated.ExecuteIfBound())
+        {
+            UE_LOG(LogSKInteractions, Error, TEXT("Inventory update delegate has failed!"));
+        }
+        return objectData;
+    }
+
+    auto newObjectData = NewObject<USKInventoryObjectData>();
+    newObjectData->InitializeItemData(ObjectData->GetItemName(), SplitAmount, ObjectData->GetItemClass(),
+                                      ObjectData->GetItemType());
+
+    objectData->ChangeItemQuantity(-(int32)SplitAmount);
+
+    if (!OnInventoryUpdated.ExecuteIfBound())
+    {
+        UE_LOG(LogSKInteractions, Error, TEXT("Inventory update delegate has failed!"));
+    }
+
+    return newObjectData;
 }
 
 void USKInventoryComponent::SortInventory()
@@ -123,7 +201,7 @@ void USKInventoryComponent::SortInventory()
     });
 }
 
-USKInventoryObjectData *USKInventoryComponent::FindInventoryItem(const USKInventoryObjectData *ObjectData)
+USKInventoryObjectData *USKInventoryComponent::FindInventoryItem(USKInventoryObjectData *ObjectData)
 {
     for (auto &Data : InventoryData)
     {
@@ -131,15 +209,8 @@ USKInventoryObjectData *USKInventoryComponent::FindInventoryItem(const USKInvent
 
             if (ObjectData->GetItemClass() == Data->GetItemClass())
         {
-            return Data.Get();
+            return Data;
         }
     }
     return nullptr;
-}
-
-/********************* Initialization *********************/
-
-void USKInventoryComponent::InitDelegates()
-{
-    // OwningCharacter->OnItemPickup.AddDynamic(this, &USKInventoryComponent::AddToInventory);
 }

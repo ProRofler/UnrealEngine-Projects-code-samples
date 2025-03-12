@@ -34,6 +34,8 @@ ASKPlayerCharacter::ASKPlayerCharacter(const FObjectInitializer &ObjectInitializ
     PlayerCamera->SetupAttachment(GetRootComponent());
     PlayerCamera->bUsePawnControlRotation = true;
 
+    // GetMesh()->SetupAttachment(PlayerCamera);
+
     PhysicsHandle = CreateDefaultSubobject<USKPhysicsHandleComponent>("Physics handle");
 }
 /************************************ UE INHERITED ******************************************/
@@ -58,8 +60,11 @@ void ASKPlayerCharacter::BeginPlay()
 void ASKPlayerCharacter::HandleDeath()
 {
     Super::HandleDeath();
+
     if (PlayerCamera && GetMesh())
     {
+        GetMesh()->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+
         PlayerCamera->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale,
                                         TEXT("headSocket"));
     }
@@ -299,6 +304,8 @@ void ASKPlayerCharacter::DropItem(USKInventoryObjectData *ItemToRemove, const in
 {
     if (!ItemToRemove) return;
 
+    if (!InventoryComponent->RemoveFromInventory(ItemToRemove, QuantityToDrop)) return;
+
     FHitResult dropPosition;
 
     if (TraceFromCamera(dropPosition, 150.0f))
@@ -326,8 +333,6 @@ void ASKPlayerCharacter::DropItem(USKInventoryObjectData *ItemToRemove, const in
                       ("1", GetName()), ("2", ItemToRemove->GetName()));
         }
     }
-
-    InventoryComponent->RemoveFromInventory(ItemToRemove, QuantityToDrop);
 }
 
 bool ASKPlayerCharacter::CanGrabItem()
@@ -403,11 +408,15 @@ AActor *ASKPlayerCharacter::GetLookedAtActor() const
         else
             continue;
 
-        // Minimally required dot product value to be considered
-        Threshold = FMath::Clamp(
-                        (FVector::Distance(PlayerCamera->GetComponentLocation(), ActorBoundsOrigin) / 10000.0f) + 0.95f,
-                        0.0f, 0.99f) -
-                    (ActorBoundsOrigin.GetAbsMax() / 1000.0f);
+        // dot product threshold variables
+        // magic numbers here were manually assigned for adjusting to an item mesh
+        const auto distanceSqr = FVector::DistSquared(PlayerCamera->GetComponentLocation(), ActorBoundsOrigin);
+
+        const auto clampedDistance = FMath::Clamp(distanceSqr * 0.000002f + 0.95f, 0.0f, 0.99f);
+        const auto boundsDelta = (ActorBoxExtent.GetAbsMax() * 0.002f);
+
+        // Minimally required dot product value to be considered as if player looking at item
+        Threshold = clampedDistance - boundsDelta;
 
         Item = ItemInVicinity;
     }

@@ -35,11 +35,17 @@ void USKInventoryWidget::UpdateInventoryWidget()
 
     if (InventoryList->GetListItems().IsEmpty())
     {
-        const auto playerInventoryData =
-            ISKInterfaceCharacter::Execute_GetInventoryComponent(GetSKPlayerHud()->GetSKPlayerCharacter())
-                ->GetInventoryData();
+        const auto playerInventory =
+            ISKInterfaceCharacter::Execute_GetInventoryComponent(GetSKPlayerHud()->GetSKPlayerCharacter());
 
-        for (const auto &itemData : playerInventoryData)
+        // Handle slots
+        if (playerInventory->GetMainWeaponSlot())
+        {
+            InventoryList->AddItem(playerInventory->GetMainWeaponSlot());
+        }
+
+        // Handle main Inventory
+        for (const auto &itemData : playerInventory->GetInventoryData())
         {
             if (itemData)
             {
@@ -62,15 +68,20 @@ void USKInventoryWidget::HandleDropItem(const USKItemListEntry *ListEntry, const
     if (!ListEntry) return;
 
     const auto player = GetSKPlayerHud()->GetSKPlayerCharacter();
-
     player->DropItem(ListEntry->GetInventoryItemData(), QuantityToDrop);
-    UpdateInventoryWidget();
-    bIsPendingUpdate = false;
 
     UE_LOGFMT(LogSKInteractions, Display,
               "Item: {ItemDataName} drop call, from ListEntry: {ListEntryName} by: {ActorName}",
               ("ItemDataName", ListEntry->GetInventoryItemData()->GetItemName()),
               ("ListEntryName", ListEntry->GetName()), ("ActorName", player->GetFName()));
+}
+
+void USKInventoryWidget::HandleUseItem(const USKItemListEntry *ListEntry)
+{
+    UE_LOGFMT(LogSKUserInterface, Display, "Attempt to use inventory item");
+
+    const auto player = GetSKPlayerHud()->GetSKPlayerCharacter();
+    player->EquipItem(ListEntry->GetInventoryItemData());
 }
 
 void USKInventoryWidget::HandleInventoryOpen()
@@ -87,6 +98,21 @@ void USKInventoryWidget::HandleEntryWidgetGenerated(UUserWidget &EntryWidget)
     const auto listEntry = Cast<USKItemListEntry>(&EntryWidget);
     if (!listEntry) return;
     listEntry->OnItemDropCalled.AddDynamic(this, &USKInventoryWidget::HandleDropItem);
+    listEntry->OnItemUseCalled.AddDynamic(this, &USKInventoryWidget::HandleUseItem);
+
+    const auto playerInventory =
+        ISKInterfaceCharacter::Execute_GetInventoryComponent(GetSKPlayerHud()->GetSKPlayerCharacter());
+    if (playerInventory)
+    {
+        if (listEntry->GetInventoryItemData() == playerInventory->GetMainWeaponSlot())
+        {
+            listEntry->ChangeButtonBGColor(FColor::FromHex("006C16D9"));
+        }
+        else
+        {
+            listEntry->ChangeButtonBGColor(FColor::FromHex("26262652"));
+        }
+    }
 }
 
 void USKInventoryWidget::HandleEntryWidgetReleased(UUserWidget &EntryWidget)
@@ -95,13 +121,27 @@ void USKInventoryWidget::HandleEntryWidgetReleased(UUserWidget &EntryWidget)
     if (!listEntry) return;
     listEntry->UnbindDelegates();
     listEntry->OnItemDropCalled.RemoveAll(this);
+    listEntry->OnItemUseCalled.RemoveAll(this);
+
+    listEntry->Destruct();
+}
+
+void USKInventoryWidget::HandleInventoryListUpdate()
+{
+    if (GetSKPlayerHud()->IsInventoryOpen())
+    {
+        UpdateInventoryWidget();
+        return;
+    }
+
+    bIsPendingUpdate = true;
 }
 
 /********************** UTILS ***********************/
 void USKInventoryWidget::InitDelegates()
 {
     ISKInterfaceCharacter::Execute_GetInventoryComponent(GetSKPlayerHud()->GetSKPlayerCharacter())
-        ->OnInventoryUpdated.BindDynamic(this, &USKInventoryWidget::MarkForUpdate);
+        ->OnInventoryUpdated.BindDynamic(this, &USKInventoryWidget::HandleInventoryListUpdate);
 
     InventoryList->OnEntryWidgetGenerated().AddUObject(this, &USKInventoryWidget::HandleEntryWidgetGenerated);
     InventoryList->OnEntryWidgetReleased().AddUObject(this, &USKInventoryWidget::HandleEntryWidgetReleased);

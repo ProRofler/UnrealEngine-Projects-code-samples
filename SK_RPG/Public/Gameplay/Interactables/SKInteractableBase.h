@@ -19,7 +19,8 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
   public:
     ASKInteractableBase();
 
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadWrite, Category = "SK Object settings")
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "SK Object settings",
+              meta = (EditCondition = "bCanEditMesh"))
     TObjectPtr<UStaticMeshComponent> BaseMesh;
 
     virtual void OnInteraction_Implementation(const AActor *TriggeredActor) override;
@@ -40,8 +41,8 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
     UFUNCTION(BlueprintCallable)
     const FORCEINLINE FGuid GetInteractableID() const { return InteractableID; }
 
-    //UFUNCTION(BlueprintCallable)
-    //void SetInteractableName(const FName &ItemName) { InteractableName = ItemName; };
+    // UFUNCTION(BlueprintCallable)
+    // void SetInteractableName(const FName &ItemName) { InteractableName = ItemName; };
 
   protected:
     virtual void BeginPlay() override;
@@ -68,4 +69,5 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
 
     void DrawCenter();
 
+    bool bCanEditMesh = true; // For disabling direct mesh editing if needed
 };

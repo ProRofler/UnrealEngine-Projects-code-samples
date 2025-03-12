@@ -22,6 +22,10 @@ void USKItemListEntry::NativeOnListItemObjectSet(UObject *ListItemObject)
         {
             BTN_Drop_Button->OnClicked.AddDynamic(this, &USKItemListEntry::HandleItemDrop);
         }
+        if (BTN_Equip_Button)
+        {
+            BTN_Equip_Button->OnClicked.AddDynamic(this, &USKItemListEntry::HandleEquipButton);
+        }
         InventoryItemData = DataObject;
 
         UE_LOGFMT(LogSKInteractions, Display, "Added list entry: \"{0}\", with Item {1} of quantity {2}",
@@ -37,6 +41,22 @@ void USKItemListEntry::HandleItemDrop()
     {
         OnItemDropCalled.Broadcast(this, 1);
     }
+    else
+    {
+        UE_LOGFMT(LogSKUserInterface, Error, "Function for drop item delegate is not bound!");
+    }
+}
+
+void USKItemListEntry::HandleEquipButton()
+{
+    if (OnItemUseCalled.IsBound())
+    {
+        OnItemUseCalled.Broadcast(this);
+    }
+    else
+    {
+        UE_LOGFMT(LogSKUserInterface, Error, "Function for use item delegate is not bound!");
+    }
 }
 
 void USKItemListEntry::UnbindDelegates()
@@ -45,4 +65,16 @@ void USKItemListEntry::UnbindDelegates()
     {
         BTN_Drop_Button->OnClicked.RemoveAll(this);
     }
+
+    if (BTN_Equip_Button)
+    {
+        BTN_Equip_Button->OnClicked.RemoveAll(this);
+    }
+}
+
+void USKItemListEntry::ChangeButtonBGColor(const FColor NewColor)
+{
+    BTN_Equip_Button->SetBackgroundColor(NewColor);
+
+    UE_LOGFMT(LogSKUserInterface, Display, "Item list entry {1} color change call", GetName());
 }

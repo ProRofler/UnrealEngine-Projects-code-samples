@@ -7,6 +7,7 @@
 #include "Characters/Components/SKCharacterMovementComponent.h"
 #include "Characters/Components/SKInventoryComponent.h"
 #include "Characters/Components/SKStateMachineComponent.h"
+#include "Characters/Components/SKWeaponComponent.h"
 
 #include "Components/CapsuleComponent.h"
 
@@ -44,6 +45,7 @@ ASKBaseCharacter::ASKBaseCharacter(const FObjectInitializer &ObjectInitializer)
     // Components
     MovementComponent = Cast<USKCharacterMovementComponent>(GetCharacterMovement());
     InventoryComponent = CreateDefaultSubobject<USKInventoryComponent>("Inventory component");
+    WeaponComponent = CreateDefaultSubobject<USKWeaponComponent>("Weapon component");
 
     // GAS
     AbilitySystemComponent = CreateDefaultSubobject<USKAbilitySystemComponent>("Ability system component");
@@ -114,11 +116,7 @@ float ASKBaseCharacter::GetStaminaPercent() const
     return AttributeSet->GetStamina() / AttributeSet->GetMaxStamina(); // clamping is already made in attribute set
 }
 
-float ASKBaseCharacter::GetHealthPercent() const
-{
-    return AttributeSet->GetHealth() / AttributeSet->GetMaxHealth();
-    // return 0.5f;
-}
+float ASKBaseCharacter::GetHealthPercent() const { return AttributeSet->GetHealth() / AttributeSet->GetMaxHealth(); }
 
 void ASKBaseCharacter::HandleStaminaChange(const float ChangedAmount)
 {
@@ -350,18 +348,26 @@ void ASKBaseCharacter::TryRunning() const
 void ASKBaseCharacter::TryDrawWeapon()
 {
     const auto wantsToDrawWeaponTag = FGameplayTag::RequestGameplayTag("Character.Request.Action.WantsToDrawWeapon");
-    const auto wantsToDrawWeaponTagCcontainer = wantsToDrawWeaponTag.GetSingleTagContainer();
+    const auto wantsToDrawWeaponTagContainer = wantsToDrawWeaponTag.GetSingleTagContainer();
 
-    if (!AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_WeaponDrawn()) &&
-        !AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_Sprinting()))
+    if (!AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_WeaponDrawn()))
     {
         AbilitySystemComponent->CheckAndAddGameplayTag(wantsToDrawWeaponTag);
-        AbilitySystemComponent->TryActivateAbilitiesByTag(wantsToDrawWeaponTagCcontainer);
+        AbilitySystemComponent->TryActivateAbilitiesByTag(wantsToDrawWeaponTagContainer);
     }
     else
     {
-        AbilitySystemComponent->CancelAbilities(&wantsToDrawWeaponTagCcontainer);
+        AbilitySystemComponent->CancelAbilities(&wantsToDrawWeaponTagContainer);
     }
+
+    AbilitySystemComponent->CheckAndRemoveGameplayTag(wantsToDrawWeaponTag);
+}
+
+void ASKBaseCharacter::EquipItem(USKInventoryObjectData *ObjectData)
+{
+    if (AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_WeaponDrawn())) return;
+
+    InventoryComponent->HandleEquip(ObjectData);
 }
 
 /************************************ STATE  ******************************************/

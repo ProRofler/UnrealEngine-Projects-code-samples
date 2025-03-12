@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include "UI/Widgets/SKUserWidgetBase.h"
 #include "CoreMinimal.h"
+#include "UI/Widgets/SKUserWidgetBase.h"
 
 #include "SKInventoryWidget.generated.h"
 
@@ -34,6 +34,9 @@ class SIRKNIGHT_API USKInventoryWidget : public USKUserWidgetBase
     UFUNCTION()
     void HandleDropItem(const USKItemListEntry *ListEntry, const int32 QuantityToDrop);
 
+    UFUNCTION()
+    void HandleUseItem(const USKItemListEntry *ListEntry);
+
   private:
     bool bIsPendingUpdate = true;
 
@@ -43,5 +46,5 @@ class SIRKNIGHT_API USKInventoryWidget : public USKUserWidgetBase
     void HandleEntryWidgetReleased(UUserWidget &EntryWidget);
 
     UFUNCTION()
-    void MarkForUpdate() { bIsPendingUpdate = true; }
+    void HandleInventoryListUpdate();
 };

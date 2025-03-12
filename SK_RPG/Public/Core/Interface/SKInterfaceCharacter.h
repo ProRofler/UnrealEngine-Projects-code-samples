@@ -8,6 +8,7 @@
 #include "SKInterfaceCharacter.generated.h"
 
 class USKInventoryComponent;
+class USKWeaponComponent;
 
 UINTERFACE(MinimalAPI)
 class USKInterfaceCharacter : public UInterface
@@ -20,6 +21,9 @@ class SIRKNIGHT_API ISKInterfaceCharacter
     GENERATED_BODY()
 
   public:
-    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "Character interface")
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "SK Character interface")
     USKInventoryComponent *GetInventoryComponent() const;
+
+    UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "SK Character interface")
+    USKWeaponComponent *GetWeaponComponent() const;
 };

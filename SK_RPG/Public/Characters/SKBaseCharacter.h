@@ -2,23 +2,33 @@
 
 #pragma once
 
-#include "AbilitySystemInterface.h"
-#include "Core/Interface/SKInterfaceCharacter.h"
-#include "Core/SKCoreTypes.h"
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+
+#include "AbilitySystemInterface.h"
+
+#include "Core/Interface/SKInterfaceCharacter.h"
+
+#include "Core/SKCoreTypes.h"
+
+#include "Utils/DataAssets/SKCharacterAnimationsDataAsset.h"
+
 #include "SKBaseCharacter.generated.h"
 
 class USKCharacterMovementComponent;
 class USKInventoryComponent;
-class UCapsuleComponent;
-class ASKInteractableBase;
-class UPhysicsHandleComponent;
-class UAbilitySystemComponent;
-class UAttributeSet;
+class USKWeaponComponent;
 class USKAttributeSet;
 class USKAttributeSetSkills;
 class USKAbilitySystemComponent;
+class USKInventoryObjectData;
+
+class ASKInteractableBase;
+
+class UCapsuleComponent;
+class UPhysicsHandleComponent;
+class UAbilitySystemComponent;
+class UAttributeSet;
 class UGameplayAbility;
 
 DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStartedSprintingSignature);
@@ -115,8 +125,10 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     FOnHealthChangedSignature OnHealthChanged;
 
     /************************************ ACTIONS  ******************************************/
-
+  public:
     UFUNCTION(BlueprintCallable) void TryDrawWeapon();
+
+    void EquipItem(USKInventoryObjectData *ObjectData);
 
     /************************************ State  ******************************************/
   public:
@@ -155,13 +167,18 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
 
     /************************************ COMPONENTS  ******************************************/
   public:
-    USKInventoryComponent *GetInventoryComponent_Implementation() const { return InventoryComponent; };
+    USKInventoryComponent *GetInventoryComponent_Implementation() const { return InventoryComponent.Get(); }
+    USKWeaponComponent *GetWeaponComponent_Implementation() const { return WeaponComponent.Get(); }
     virtual UAbilitySystemComponent *GetAbilitySystemComponent() const override;
 
   protected:
     TObjectPtr<USKCharacterMovementComponent> MovementComponent;
+
     UPROPERTY(VisibleAnywhere, Category = "SK Character|Inventory")
     TObjectPtr<USKInventoryComponent> InventoryComponent;
+
+    UPROPERTY(VisibleAnywhere, Category = "SK Character|Weapon")
+    TObjectPtr<USKWeaponComponent> WeaponComponent;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SK Character|GAS", meta = (AllowPrivateAccess = "true"))
     TObjectPtr<USKAbilitySystemComponent> AbilitySystemComponent;
@@ -174,6 +191,10 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     FTimerHandle HealthRegenTimerHandle;
     FTimerHandle InteractionTimer;
 
+    /************************************ Data assets  ******************************************/
+  public:
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Character|Data Assets")
+    USKCharacterAnimationsDataAsset *AnimationsDA = nullptr;
     /************************************ DEBUGGING  ******************************************/
   public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Logging", meta = (DisplayPriority = 1))

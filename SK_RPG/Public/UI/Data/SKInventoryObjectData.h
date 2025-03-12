@@ -16,21 +16,29 @@ class SIRKNIGHT_API USKInventoryObjectData : public UObject
     GENERATED_BODY()
 
   public:
-    UFUNCTION(BlueprintCallable)
+    UFUNCTION(BlueprintPure)
     const FORCEINLINE FName &GetItemName() const { return ItemName; }
-    const FORCEINLINE int32 &GetItemQuantity() const { return ItemQuantity; }
-    const FORCEINLINE TSubclassOf<ASKCollectible> GetItemClass() const { return ItemClass; }
+
+    UFUNCTION(BlueprintPure)
+    const FORCEINLINE int32 GetItemQuantity() const { return ItemQuantity; }
+
+    UFUNCTION(BlueprintPure)
+    TSubclassOf<ASKCollectible> &GetItemClass() { return ItemClass; }
+
+    UFUNCTION(BlueprintPure)
     const FORCEINLINE ECollectibleType GetItemType() const { return ItemType; }
 
+    UFUNCTION(BlueprintCallable)
     void ChangeItemQuantity(const int32 QuantityToChange) { ItemQuantity += QuantityToChange; }
 
+    UFUNCTION(BlueprintCallable)
     void InitializeItemData(const FName &_ItemName, const int32 _ItemQuantity,
                             const TSubclassOf<ASKCollectible> _ItemClass, const ECollectibleType _ItemType);
 
   private:
     FName ItemName = TEXT("Default name");
     ECollectibleType ItemType;
-    int32 ItemQuantity = 0;
+    uint32 ItemQuantity = 0;
     TSubclassOf<ASKCollectible> ItemClass;
 };
 
