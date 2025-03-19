@@ -13,13 +13,27 @@
 /********************* DEFAULT *********************/
 USKInventoryComponent::USKInventoryComponent() { PrimaryComponentTick.bCanEverTick = false; }
 
+//
+/********************* Equip handling *********************/
+
 void USKInventoryComponent::HandleEquip(USKInventoryObjectData *ObjectData)
 {
     if (!ObjectData) return;
 
+    if (ObjectData->GetItemType() == ECollectibleType::Weapon)
+    {
+        EquipWeapon(ObjectData);
+    }
+
+    OnInventoryUpdated.ExecuteIfBound();
+}
+
+void USKInventoryComponent::EquipWeapon(USKInventoryObjectData *ObjectData)
+{
+
     if (ObjectData == GetMainWeaponSlot())
     {
-        if (auto item = FindInInventoryByClass(ObjectData->GetItemClass()))
+        if (auto item = FindByClass(ObjectData->GetItemClass()))
         {
             item->ChangeItemQuantity(ObjectData->GetItemQuantity());
         }
@@ -34,7 +48,7 @@ void USKInventoryComponent::HandleEquip(USKInventoryObjectData *ObjectData)
     {
         if (GetMainWeaponSlot())
         {
-            if (auto item = FindInInventoryByClass(GetMainWeaponSlot()->GetItemClass()))
+            if (auto item = FindByClass(GetMainWeaponSlot()->GetItemClass()))
             {
                 item->ChangeItemQuantity(GetMainWeaponSlot()->GetItemQuantity());
             }
@@ -49,15 +63,15 @@ void USKInventoryComponent::HandleEquip(USKInventoryObjectData *ObjectData)
         auto itemToEquip = SplitInventoryObjectData(ObjectData, 1);
         SetMainWeaponSlot(itemToEquip);
     }
-
-    OnInventoryUpdated.ExecuteIfBound();
 }
 
-void USKInventoryComponent::BeginPlay() { Super::BeginPlay(); }
+//
+/********************* Invevntory handle *********************/
 
-/********************* Items handling *********************/
 void USKInventoryComponent::AddToInventory(AActor *PickedItem)
 {
+    if (!PickedItem) return;
+
     auto itemData = CreateInventoryObjectDataItem(PickedItem);
     if (!itemData)
     {
@@ -67,7 +81,7 @@ void USKInventoryComponent::AddToInventory(AActor *PickedItem)
         checkNoEntry();
     }
 
-    if (auto item = FindInventoryItem(itemData))
+    if (auto item = FindByObjectData(itemData))
     {
         UE_LOG(LogTemp, Display, TEXT("Found in inventory"));
         item->ChangeItemQuantity(itemData->GetItemQuantity());
@@ -94,12 +108,12 @@ void USKInventoryComponent::AddToInventory(AActor *PickedItem)
               GetSKOwnerCharacter()->GetName(), itemData->GetItemName(), itemData->GetItemClass()->GetName());
 }
 
-bool USKInventoryComponent::RemoveFromInventory(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop)
+bool USKInventoryComponent::RemoveFromInventory(USKInventoryObjectData *ItemToRemove, const int32 QuantityToRemove)
 {
     if (!ItemToRemove) return false;
     if (ItemToRemove == GetMainWeaponSlot()) return false;
 
-    if (ItemToRemove->GetItemQuantity() - QuantityToDrop <= 0)
+    if (ItemToRemove->GetItemQuantity() - QuantityToRemove <= 0)
     {
 
         if (OnItemPickup.IsBound())
@@ -112,18 +126,21 @@ bool USKInventoryComponent::RemoveFromInventory(USKInventoryObjectData *ItemToRe
     else
     {
         auto i = InventoryData.Find(ItemToRemove);
-        InventoryData[i]->ChangeItemQuantity(-QuantityToDrop);
+        InventoryData[i]->ChangeItemQuantity(-QuantityToRemove);
     }
 
     OnInventoryUpdated.ExecuteIfBound();
 
-    UE_LOGFMT(LogSKInteractions, Display, "Actor: {0} Dropped item: {1}", this->GetName(), ItemToRemove->GetName());
+    UE_LOGFMT(LogSKInteractions, Display, "Item {0} was removed from {1} inventory", ItemToRemove->GetName(),
+              GetName());
 
     return true;
 }
 
-USKInventoryObjectData *USKInventoryComponent::FindInInventoryByClass(
-    const TSubclassOf<ASKCollectible> &CollectibleClass) const
+//
+/********************* Inventory search *********************/
+
+USKInventoryObjectData *USKInventoryComponent::FindByClass(const TSubclassOf<ASKCollectible> &CollectibleClass) const
 {
     for (auto item : InventoryData)
     {
@@ -133,28 +150,57 @@ USKInventoryObjectData *USKInventoryComponent::FindInInventoryByClass(
     return nullptr;
 }
 
-USKInventoryObjectData *USKInventoryComponent::CreateInventoryObjectDataItem(const AActor *Item)
+USKInventoryObjectData *USKInventoryComponent::FindByObjectData(USKInventoryObjectData *ObjectData)
 {
-    if (!Item) return nullptr;
-
-    auto originaItem = Cast<ASKCollectible>(Item);
-    if (!originaItem) return nullptr;
-
-    if (USKInventoryObjectData *newInventoryItem = NewObject<USKInventoryObjectData>(this))
+    for (auto &Data : InventoryData)
     {
-        newInventoryItem->InitializeItemData(originaItem->GetInteractableName(), originaItem->GetItemQuantity(),
-                                             originaItem->GetClass(), originaItem->GetCollectibleType());
+        check(Data)
 
-        return newInventoryItem;
+            if (ObjectData->GetItemClass() == Data->GetItemClass())
+        {
+            return Data;
+        }
     }
 
     return nullptr;
 }
 
+//
+/********************* UTILS *********************/
+
+void USKInventoryComponent::SortInventory()
+{
+    UE_LOG(LogTemp, Display, TEXT("Attempting to sort the inventory"));
+
+    InventoryData.Sort([](const TObjectPtr<USKInventoryObjectData> &A, const TObjectPtr<USKInventoryObjectData> &B) {
+        if (A && B)
+        {
+            return A->GetItemName().LexicalLess(B->GetItemName());
+        }
+        else
+        {
+            return A != nullptr;
+        }
+    });
+}
+
+USKInventoryObjectData *USKInventoryComponent::CreateInventoryObjectDataItem(const AActor *Item)
+{
+    auto originaItem = Cast<ASKCollectible>(Item);
+    if (!originaItem) return nullptr;
+
+    USKInventoryObjectData *newInventoryItem = NewObject<USKInventoryObjectData>(this);
+
+    newInventoryItem->InitializeItemData(originaItem->GetInteractableName(), originaItem->GetItemQuantity(),
+                                         originaItem->GetClass(), originaItem->GetCollectibleType());
+
+    return newInventoryItem;
+}
+
 USKInventoryObjectData *USKInventoryComponent::SplitInventoryObjectData(USKInventoryObjectData *ObjectData,
                                                                         const uint32 SplitAmount)
 {
-    auto objectData = FindInventoryItem(ObjectData);
+    auto objectData = FindByObjectData(ObjectData);
     if (!objectData) return nullptr;
 
     const uint32 itemQuantity = objectData->GetItemQuantity();
@@ -183,34 +229,4 @@ USKInventoryObjectData *USKInventoryComponent::SplitInventoryObjectData(USKInven
     }
 
     return newObjectData;
-}
-
-void USKInventoryComponent::SortInventory()
-{
-    UE_LOG(LogTemp, Display, TEXT("Attempting to sort the inventory"));
-
-    InventoryData.Sort([](const TObjectPtr<USKInventoryObjectData> &A, const TObjectPtr<USKInventoryObjectData> &B) {
-        if (A && B)
-        {
-            return A->GetItemName().LexicalLess(B->GetItemName());
-        }
-        else
-        {
-            return A != nullptr;
-        }
-    });
-}
-
-USKInventoryObjectData *USKInventoryComponent::FindInventoryItem(USKInventoryObjectData *ObjectData)
-{
-    for (auto &Data : InventoryData)
-    {
-        check(Data)
-
-            if (ObjectData->GetItemClass() == Data->GetItemClass())
-        {
-            return Data;
-        }
-    }
-    return nullptr;
 }

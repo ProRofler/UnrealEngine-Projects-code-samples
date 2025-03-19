@@ -339,16 +339,15 @@ bool ASKPlayerCharacter::CanGrabItem()
 {
     if (!InteractionTarget.IsValid()) return false;
 
-    if (AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_CanInteract()) &&
-        !AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem()) &&
-        InteractionTarget->GetRootComponent()->IsSimulatingPhysics()) // TODO: Check by interface in the future
-    {
-        return true;
-    }
-    else
-    {
-        return false;
-    }
+    const bool canInteract =
+        AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_CanInteract());
+
+    const bool grabbingItem =
+        AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem());
+
+    const bool targetSimulatesPhysics = InteractionTarget->GetRootComponent()->IsSimulatingPhysics();
+
+    return canInteract && !grabbingItem && targetSimulatesPhysics;
 }
 
 void ASKPlayerCharacter::HandleGrabbing()
@@ -403,6 +402,7 @@ AActor *ASKPlayerCharacter::GetLookedAtActor() const
         const auto DotProduct = FVector::DotProduct(
             PlayerCamera->GetForwardVector(),
             UKismetMathLibrary::GetDirectionUnitVector(PlayerCamera->GetComponentLocation(), ActorBoundsOrigin));
+
         if (DotProduct >= BestDotProduct)
             BestDotProduct = DotProduct;
         else
@@ -421,10 +421,7 @@ AActor *ASKPlayerCharacter::GetLookedAtActor() const
         Item = ItemInVicinity;
     }
 
-    if (BestDotProduct < Threshold)
-        return nullptr;
-    else
-        return Item;
+    return BestDotProduct < Threshold ? nullptr : Item;
 }
 
 FHitResult ASKPlayerCharacter::TraceToActor(const AActor *OtherActor) const

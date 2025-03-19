@@ -6,6 +6,8 @@
 
 #include "Gameplay/Interactables/SKWeapon.h"
 
+#include "Gameplay/Equipables/SKEquippableSword.h"
+
 #include "Characters/Components/SKInventoryComponent.h"
 #include "Characters/SKBaseCharacter.h"
 
@@ -17,7 +19,7 @@ void USKWeaponComponent::SpawnWeapon(TSubclassOf<ASKEquippableBase> EquippableCl
     if (!EquippableClass) return;
 
     EquippedWeapon =
-        GetWorld()->SpawnActorDeferred<ASKEquippableBase>(EquippableClass, GetOwner()->GetActorTransform());
+        GetWorld()->SpawnActorDeferred<ASKEquippableSword>(EquippableClass, GetOwner()->GetActorTransform());
 
     if (!EquippedWeapon) checkNoEntry();
 

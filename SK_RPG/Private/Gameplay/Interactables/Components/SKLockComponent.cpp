@@ -17,7 +17,7 @@ USKLockComponent::USKLockComponent() { PrimaryComponentTick.bCanEverTick = false
 const bool USKLockComponent::TryUnlocking(const AActor *UnlockInitiator)
 {
     const auto requiredKeyClass =
-        ISKInterfaceCharacter::Execute_GetInventoryComponent(UnlockInitiator)->FindInInventoryByClass(KeyClass);
+        ISKInterfaceCharacter::Execute_GetInventoryComponent(UnlockInitiator)->FindByClass(KeyClass);
 
     if (requiredKeyClass)
     {

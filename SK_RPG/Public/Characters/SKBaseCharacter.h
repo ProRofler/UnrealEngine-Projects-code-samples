@@ -127,6 +127,10 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     /************************************ ACTIONS  ******************************************/
   public:
     UFUNCTION(BlueprintCallable) void TryDrawWeapon();
+    UFUNCTION(BlueprintCallable) void TrySwitchWeapon();
+
+    UFUNCTION(BlueprintCallable) void TryAttacking();
+    UFUNCTION(BlueprintCallable) void TryBlocking();
 
     void EquipItem(USKInventoryObjectData *ObjectData);
 
@@ -195,6 +199,7 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
   public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Character|Data Assets")
     USKCharacterAnimationsDataAsset *AnimationsDA = nullptr;
+
     /************************************ DEBUGGING  ******************************************/
   public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Logging", meta = (DisplayPriority = 1))

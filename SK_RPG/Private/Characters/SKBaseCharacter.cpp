@@ -347,7 +347,7 @@ void ASKBaseCharacter::TryRunning() const
 /************************************ ACTIONS  ******************************************/
 void ASKBaseCharacter::TryDrawWeapon()
 {
-    const auto wantsToDrawWeaponTag = FGameplayTag::RequestGameplayTag("Character.Request.Action.WantsToDrawWeapon");
+    const auto wantsToDrawWeaponTag = FGameplayTag::RequestGameplayTag("Character.Request.Combat.WantsToDrawWeapon");
     const auto wantsToDrawWeaponTagContainer = wantsToDrawWeaponTag.GetSingleTagContainer();
 
     if (!AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_WeaponDrawn()))
@@ -363,11 +363,85 @@ void ASKBaseCharacter::TryDrawWeapon()
     AbilitySystemComponent->CheckAndRemoveGameplayTag(wantsToDrawWeaponTag);
 }
 
+void ASKBaseCharacter::TrySwitchWeapon()
+{
+    const auto wantsToSwitchWeaponTag =
+        FGameplayTag::RequestGameplayTag("Character.Request.Combat.WantsToSwitchWeapon");
+
+    const auto wantsToSwitchWeaponTagContainer = wantsToSwitchWeaponTag.GetSingleTagContainer();
+
+    if (AbilitySystemComponent->CheckAndAddGameplayTag(wantsToSwitchWeaponTag))
+        AbilitySystemComponent->TryActivateAbilitiesByTag(wantsToSwitchWeaponTagContainer);
+
+    AbilitySystemComponent->CheckAndRemoveGameplayTag(wantsToSwitchWeaponTag);
+}
+
+void ASKBaseCharacter::TryAttacking()
+{
+    const auto wantsToAttack = USKCommonGameplayTagsLib::GetTag_WantsToAttack();
+
+    if (AbilitySystemComponent->CheckAndAddGameplayTag(wantsToAttack))
+    {
+        if (!AbilitySystemComponent->TryActivateAbilitiesByTag(wantsToAttack.GetSingleTagContainer()))
+            AbilitySystemComponent->CheckAndRemoveGameplayTag(wantsToAttack);
+    }
+    else
+    {
+        AbilitySystemComponent->CheckAndRemoveGameplayTag(wantsToAttack);
+    }
+
+    if (bEnableLogging && bEnableLoggingAbilitySystem)
+        UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' is tried to attack", ("ActorName", GetName()));
+}
+
+void ASKBaseCharacter::TryBlocking()
+{
+    const auto wantsToBlock = FGameplayTag::RequestGameplayTag("Character.Request.Combat.WantsToBlock");
+    const auto wantsToBlockContainer = wantsToBlock.GetSingleTagContainer();
+
+    const auto blockingTag = USKCommonGameplayTagsLib::GetTag_Blocking();
+
+    if (!AbilitySystemComponent->HasAnyMatchingGameplayTags(blockingTag.GetSingleTagContainer()))
+    {
+        if (AbilitySystemComponent->CheckAndAddGameplayTag(wantsToBlock))
+        {
+            AbilitySystemComponent->TryActivateAbilitiesByTag(wantsToBlock.GetSingleTagContainer());
+        }
+    }
+    else
+    {
+        AbilitySystemComponent->CancelAbilities(&wantsToBlockContainer);
+    }
+
+    AbilitySystemComponent->CheckAndRemoveGameplayTag(wantsToBlock);
+
+    if (bEnableLogging && bEnableLoggingAbilitySystem)
+        UE_LOGFMT(LogSKCharacterMovement, Display, "Actor '{ActorName}' is tried to block", ("ActorName", GetName()));
+}
+
 void ASKBaseCharacter::EquipItem(USKInventoryObjectData *ObjectData)
 {
-    if (AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_WeaponDrawn())) return;
+
+    const bool performingAction =
+        AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_PerformingAction());
+    if (performingAction) return;
+
+    const bool weaponDrawn =
+        AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_WeaponDrawn());
 
     InventoryComponent->HandleEquip(ObjectData);
+
+    if (weaponDrawn)
+    {
+        if (InventoryComponent->GetMainWeaponSlot())
+        {
+            TrySwitchWeapon();
+        }
+        else
+        {
+            TryDrawWeapon();
+        }
+    }
 }
 
 /************************************ STATE  ******************************************/

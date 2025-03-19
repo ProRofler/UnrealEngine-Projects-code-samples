@@ -75,7 +75,11 @@ void USKCharacterMovementComponent::HandleRunningSpeed()
                 TRange<float>::Inclusive(0.0f, 180.0f), TRange<float>::Inclusive(1.0f, 0.3f),
                 FMath::Abs(GetSKOwnerCharacter()->GetCharacterMovementAngle()));
 
-            MaxWalkSpeed = BaseWalkSpeed * decreaseCoef;
+            const auto runSpeedAdjust =
+                GetSKOwnerCharacter()->GetAbilitySystemComponent()->GetSet<USKAttributeSetSkills>()->GetAthletics() /
+                100.0f;
+
+            MaxWalkSpeed = BaseWalkSpeed * runSpeedAdjust * decreaseCoef;
         });
     }
 }

@@ -33,33 +33,35 @@ void USKInventoryWidget::UpdateInventoryWidget()
     InventoryList->ClearListItems();
     InventoryList->RegenerateAllEntries();
 
-    if (InventoryList->GetListItems().IsEmpty())
-    {
-        const auto playerInventory =
-            ISKInterfaceCharacter::Execute_GetInventoryComponent(GetSKPlayerHud()->GetSKPlayerCharacter());
+    const auto playerInventory =
+        ISKInterfaceCharacter::Execute_GetInventoryComponent(GetSKPlayerHud()->GetSKPlayerCharacter());
 
-        // Handle slots
-        if (playerInventory->GetMainWeaponSlot())
-        {
-            InventoryList->AddItem(playerInventory->GetMainWeaponSlot());
-        }
+    if (!playerInventory) return;
 
-        // Handle main Inventory
-        for (const auto &itemData : playerInventory->GetInventoryData())
-        {
-            if (itemData)
-            {
-                InventoryList->AddItem(itemData);
-                UE_LOGFMT(LogSKInteractions, Display, "Parsed item: \"{1}\", of quantity {2} to list",
-                          itemData->GetItemName(), FString::FormatAsNumber(itemData->GetItemQuantity()));
-            }
-        }
-        UE_LOG(LogSKUserInterface, Display, TEXT("Inventory list was succesfully updated"));
-    }
-    else
+    if (!InventoryList->GetListItems().IsEmpty())
     {
         UE_LOG(LogSKUserInterface, Error, TEXT("Inventory list wasn't empty before populating"));
+        checkNoEntry();
     }
+
+    // Handle slots
+    if (playerInventory->GetMainWeaponSlot())
+    {
+        InventoryList->AddItem(playerInventory->GetMainWeaponSlot());
+    }
+
+    // Handle main Inventory
+    for (const auto &itemData : playerInventory->GetInventoryData())
+    {
+        if (itemData)
+        {
+            InventoryList->AddItem(itemData);
+            UE_LOGFMT(LogSKInteractions, Display, "Parsed item: \"{1}\", of quantity {2} to list",
+                      itemData->GetItemName(), FString::FormatAsNumber(itemData->GetItemQuantity()));
+        }
+    }
+
+    UE_LOG(LogSKUserInterface, Display, TEXT("Inventory list was succesfully updated"));
 }
 
 /********************** BACK ***********************/
@@ -100,8 +102,10 @@ void USKInventoryWidget::HandleEntryWidgetGenerated(UUserWidget &EntryWidget)
     listEntry->OnItemDropCalled.AddDynamic(this, &USKInventoryWidget::HandleDropItem);
     listEntry->OnItemUseCalled.AddDynamic(this, &USKInventoryWidget::HandleUseItem);
 
+    // Paint item to see if equipped
     const auto playerInventory =
         ISKInterfaceCharacter::Execute_GetInventoryComponent(GetSKPlayerHud()->GetSKPlayerCharacter());
+
     if (playerInventory)
     {
         if (listEntry->GetInventoryItemData() == playerInventory->GetMainWeaponSlot())
@@ -119,6 +123,7 @@ void USKInventoryWidget::HandleEntryWidgetReleased(UUserWidget &EntryWidget)
 {
     const auto listEntry = Cast<USKItemListEntry>(&EntryWidget);
     if (!listEntry) return;
+
     listEntry->UnbindDelegates();
     listEntry->OnItemDropCalled.RemoveAll(this);
     listEntry->OnItemUseCalled.RemoveAll(this);

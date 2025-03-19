@@ -74,6 +74,10 @@ void ASKPlayerController::OnPossess(APawn *aPawn)
                           &ASKPlayerController::ToggleInventoryHUD);
         Input->BindAction(InputData.DrawWeaponAction, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
                           &ASKPlayerCharacter::TryDrawWeapon);
+        Input->BindAction(InputData.AttackAction, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
+                          &ASKPlayerCharacter::TryAttacking);
+        Input->BindAction(InputData.BlockAction, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
+                          &ASKPlayerCharacter::TryBlocking);
     }
 }
 

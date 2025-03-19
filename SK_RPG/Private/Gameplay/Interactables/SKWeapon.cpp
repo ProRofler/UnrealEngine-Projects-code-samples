@@ -4,7 +4,11 @@
 
 #include "Gameplay/Equipables/SKEquippableBase.h"
 
-ASKWeapon::ASKWeapon() { bCanEditMesh = false; }
+ASKWeapon::ASKWeapon()
+{
+    bCanEditMesh = false;
+    SetCollectibleType(ECollectibleType::Weapon);
+}
 
 void ASKWeapon::OnConstruction(const FTransform &Transform)
 {

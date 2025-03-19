@@ -10,13 +10,6 @@ ASKEquippableBase::ASKEquippableBase()
     SetRootComponent(BaseMesh);
 }
 
-UStaticMesh *ASKEquippableBase::GetStaticMesh() const
-{
-    if (BaseMesh)
-        return BaseMesh->GetStaticMesh();
-
-    else
-        return nullptr;
-}
+UStaticMesh *ASKEquippableBase::GetStaticMesh() const { return BaseMesh ? BaseMesh->GetStaticMesh() : nullptr; }
 
 void ASKEquippableBase::BeginPlay() { Super::BeginPlay(); }
