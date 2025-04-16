@@ -5,7 +5,7 @@
 #include "AbilitySystemComponent.h"
 #include "Core/SKLogCategories.h"
 #include "Gameplay/GAS/SKAbilitySystemComponent.h"
-#include "Gameplay/GAS/SKCommonGameplayTagsLib.h"
+#include "Gameplay/GAS/SKNativeGameplayTags.h"
 #include "GameplayEffectTypes.h"
 #include "Logging/StructuredLog.h"
 
@@ -30,15 +30,15 @@ float USKStaminaRegenMMC::CalculateBaseMagnitude_Implementation(const FGameplayE
         return 0.0f;
     }
 
-    float BaseRegen = ASC->StaminaRegenAmount;
+    float BaseRegen = 1.f;
 
-    if (ASC->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_Idling()))
+    if (ASC->HasMatchingGameplayTag(FSKGameplayTags::Get().Character_State_Movement_Idling))
     {
-        BaseRegen *= ASC->StamineRegenIdleMultiplier;
+        BaseRegen *= 2.f;
     }
-    else if (ASC->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_Walking()))
+    else if (ASC->HasMatchingGameplayTag(FSKGameplayTags::Get().Character_State_Movement_Walking))
     {
-        BaseRegen *= ASC->StamineRegenWalkMultiplier;
+        BaseRegen *= 1.5f;
     }
 
     return BaseRegen;

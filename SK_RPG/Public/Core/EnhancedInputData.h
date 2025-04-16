@@ -12,12 +12,11 @@ struct FEnhancedInputData
 
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Mapping context")
     UInputMappingContext *InputMapping = nullptr;
+
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly)
     UInputAction *MovingAction = nullptr;
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
     UInputAction *LookAction = nullptr;
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
-    UInputAction *SprintAction = nullptr;
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
     UInputAction *JumpAction = nullptr;
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Movement")
@@ -25,15 +24,7 @@ struct FEnhancedInputData
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interactions")
     UInputAction *AltAction = nullptr;
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interactions")
-    UInputAction *InteractionAction = nullptr;
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interactions")
     UInputAction *InteractionActionHold = nullptr;
     UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
     UInputAction *InventoryToggleAction = nullptr;
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
-    UInputAction *DrawWeaponAction = nullptr;
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
-    UInputAction *AttackAction = nullptr;
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "UI")
-    UInputAction *BlockAction = nullptr;
 };

@@ -12,10 +12,13 @@ void USKAbilityBase::OnGiveAbility(const FGameplayAbilityActorInfo *ActorInfo, c
     Super::OnGiveAbility(ActorInfo, Spec);
 
     if (GetInstancingPolicy() == EGameplayAbilityInstancingPolicy::NonInstanced)
+    {
         checkf(false, TEXT("This ability can't be non-instanced!"));
-
-    if (const FGameplayAbilityActorInfo *OwnerActorInfo = GetCurrentActorInfo())
-        OwnerCharacter = CastChecked<ASKBaseCharacter>(OwnerActorInfo->AvatarActor);
+    }
+    else if (GetInstancingPolicy() == EGameplayAbilityInstancingPolicy::InstancedPerActor)
+    {
+        OwnerCharacter = CastChecked<ASKBaseCharacter>(GetAvatarActorFromActorInfo());
+    }
 }
 
 void USKAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
@@ -26,6 +29,11 @@ void USKAbilityBase::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
     if (!CommitAbility(Handle, ActorInfo, ActivationInfo))
     {
         EndAbility(Handle, ActorInfo, ActivationInfo, true, false);
+    }
+
+    if (GetInstancingPolicy() == EGameplayAbilityInstancingPolicy::InstancedPerExecution)
+    {
+        OwnerCharacter = CastChecked<ASKBaseCharacter>(GetAvatarActorFromActorInfo());
     }
 
     if (bEnableLogging)

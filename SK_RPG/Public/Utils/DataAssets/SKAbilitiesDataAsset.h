@@ -12,6 +12,9 @@ class SIRKNIGHT_API USKAbilitiesDataAsset : public UDataAsset
     GENERATED_BODY()
 
   public:
-    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Abilities|Granted abilities")
-    TArray<TSubclassOf<class UGameplayAbility>> GrantedAbilities;
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Abilities")
+    TArray<TSubclassOf<class UGameplayAbility>> ActiveAbilities;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Abilities")
+    TArray<TSubclassOf<class UGameplayAbility>> PassiveAbilities;
 };

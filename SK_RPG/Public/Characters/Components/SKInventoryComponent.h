@@ -40,7 +40,7 @@ class SIRKNIGHT_API USKInventoryComponent : public USKCharacterComponentBase
     /********************* Equip handling *********************/
   public:
     UFUNCTION(BlueprintCallable, Category = "SK Weapon Component")
-    void HandleEquip(USKInventoryObjectData *ObjectData);
+    void HandleUseItem(USKInventoryObjectData *ObjectData);
 
   private:
     void EquipWeapon(USKInventoryObjectData *ObjectData);

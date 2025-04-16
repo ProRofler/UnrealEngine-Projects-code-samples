@@ -10,7 +10,7 @@
 
 #include "SKInventoryObjectData.generated.h"
 
-UCLASS()
+UCLASS(BlueprintType)
 class SIRKNIGHT_API USKInventoryObjectData : public UObject
 {
     GENERATED_BODY()
@@ -40,17 +40,4 @@ class SIRKNIGHT_API USKInventoryObjectData : public UObject
     ECollectibleType ItemType;
     uint32 ItemQuantity = 0;
     TSubclassOf<ASKCollectible> ItemClass;
-};
-
-UCLASS()
-class SIRKNIGHT_API USKInventoryObjectDataKey : public USKInventoryObjectData
-{
-    GENERATED_BODY()
-
-  public:
-    void AddKeyID(const FGuid &_KeyID) { KeyID = _KeyID; }
-    const FORCEINLINE FGuid GetKeyID() const { return KeyID; }
-
-  private:
-    FGuid KeyID;
 };

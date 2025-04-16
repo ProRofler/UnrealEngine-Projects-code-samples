@@ -2,6 +2,7 @@
 
 #include "Gameplay/GAS/SKAttributeSet.h"
 #include "Characters/SKBaseCharacter.h"
+#include "Gameplay/GAS/SKNativeGameplayTags.h"
 #include "GameplayEffectExtension.h"
 
 void USKAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallbackData &Data)
@@ -17,7 +18,17 @@ void USKAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallback
 
             SetStamina(clampedStamina);
 
-            SKCharacter->OnStaminaChanged.ExecuteIfBound(Data.EvaluatedData.Magnitude);
+            FSKAttributeChangeData StaminaChageData;
+            StaminaChageData.ChangedAmount = Data.EvaluatedData.Magnitude;
+            StaminaChageData.CurrentValue = GetStamina();
+            StaminaChageData.MaxValue = GetMaxStamina();
+            StaminaChageData.AttributeTag = FSKGameplayTags::Get().Attibute_Main_Stamina;
+            StaminaChageData.EventIncreasedTag = FSKGameplayTags::Get().Event_Attibute_Increase_Stamina;
+            StaminaChageData.EventDecreasedTag = FSKGameplayTags::Get().Event_Attibute_Decrease_Stamina;
+            StaminaChageData.EventDepletedTag = FSKGameplayTags::Get().Event_Attibute_Depleted_Stamina;
+            StaminaChageData.EventFullTag = FSKGameplayTags::Get().Event_Attibute_Full_Stamina;
+
+            SKCharacter->OnMainAttributeChanged.ExecuteIfBound(StaminaChageData);
         }
     }
 
@@ -30,7 +41,19 @@ void USKAttributeSet::PostGameplayEffectExecute(const FGameplayEffectModCallback
 
             SetHealth(clampedHealth);
 
-            SKCharacter->OnHealthChanged.ExecuteIfBound(Data.EvaluatedData.Magnitude);
+            FSKAttributeChangeData HeathChangeData;
+            HeathChangeData.ChangedAmount = Data.EvaluatedData.Magnitude;
+            HeathChangeData.CurrentValue = GetHealth();
+            HeathChangeData.MaxValue = GetMaxHealth();
+            HeathChangeData.AttributeTag = FSKGameplayTags::Get().Attibute_Main_Health;
+            HeathChangeData.EventIncreasedTag = FSKGameplayTags::Get().Event_Attibute_Increase_Health;
+            HeathChangeData.EventDecreasedTag = FSKGameplayTags::Get().Event_Attibute_Decrease_Health;
+            HeathChangeData.EventDepletedTag = FSKGameplayTags::Get().Event_Attibute_Depleted_Health;
+            HeathChangeData.EventFullTag = FSKGameplayTags::Get().Event_Attibute_Full_Health;
+
+            SKCharacter->OnMainAttributeChanged.ExecuteIfBound(HeathChangeData);
+
+            SKCharacter->OnMainAttributeChanged.ExecuteIfBound(HeathChangeData);
         }
     }
 }

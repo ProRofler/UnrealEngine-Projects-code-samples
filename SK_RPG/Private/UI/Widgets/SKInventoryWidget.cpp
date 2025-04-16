@@ -83,7 +83,7 @@ void USKInventoryWidget::HandleUseItem(const USKItemListEntry *ListEntry)
     UE_LOGFMT(LogSKUserInterface, Display, "Attempt to use inventory item");
 
     const auto player = GetSKPlayerHud()->GetSKPlayerCharacter();
-    player->EquipItem(ListEntry->GetInventoryItemData());
+    player->HandleUseItem(ListEntry->GetInventoryItemData());
 }
 
 void USKInventoryWidget::HandleInventoryOpen()

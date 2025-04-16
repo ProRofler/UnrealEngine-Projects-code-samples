@@ -7,7 +7,7 @@
 
 #include "Gameplay/GAS/SKAbilitySystemComponent.h"
 #include "Gameplay/GAS/SKAttributeSetSkills.h"
-#include "Gameplay/GAS/SKCommonGameplayTagsLib.h"
+#include "Gameplay/GAS/SKNativeGameplayTags.h"
 
 #include "Core/SKLogCategories.h"
 
@@ -65,7 +65,9 @@ ASKBaseCharacter *USKCharacterMovementComponent::GetSKOwnerCharacter() const
 
 void USKCharacterMovementComponent::HandleRunningSpeed()
 {
-    const auto runningTagC = USKCommonGameplayTagsLib::GetTag_Running().GetSingleTagContainer();
+    const auto runningTagC = FSKGameplayTags::Get().Character_State_Movement_Running.GetSingleTagContainer();
+    const auto sprintingTagC = FSKGameplayTags::Get().Character_State_Movement_Sprinting.GetSingleTagContainer();
+
     if (GetSKOwnerCharacter()->GetAbilitySystemComponent()->HasAnyMatchingGameplayTags(runningTagC))
     {
         Async(EAsyncExecution::TaskGraph, [&]() {
@@ -81,5 +83,13 @@ void USKCharacterMovementComponent::HandleRunningSpeed()
 
             MaxWalkSpeed = BaseWalkSpeed * runSpeedAdjust * decreaseCoef;
         });
+    }
+    else if (GetSKOwnerCharacter()->GetAbilitySystemComponent()->HasAnyMatchingGameplayTags(sprintingTagC) &&
+             !GetSKOwnerCharacter()->IsMovingForward())
+    {
+        const auto sprintAbilityTag =
+            FGameplayTag::RequestGameplayTag("Ability.Movement.Sprint").GetSingleTagContainer();
+
+        GetSKOwnerCharacter()->GetAbilitySystemComponent()->CancelAbilities(&sprintAbilityTag);
     }
 }

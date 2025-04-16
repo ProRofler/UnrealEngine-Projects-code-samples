@@ -13,6 +13,8 @@
 
 #include "Utils/DataAssets/SKCharacterAnimationsDataAsset.h"
 
+#include "Gameplay/GAS/SKAttributeSet.h"
+
 #include "SKBaseCharacter.generated.h"
 
 class USKCharacterMovementComponent;
@@ -31,10 +33,10 @@ class UAbilitySystemComponent;
 class UAttributeSet;
 class UGameplayAbility;
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStartedSprintingSignature);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnStartedRunningSignature);
-DECLARE_DELEGATE_OneParam(FOnStaminaChangedSignature, float);
-DECLARE_DELEGATE_OneParam(FOnHealthChangedSignature, float);
+class USKAbilitiesDataAsset;
+class USKBasicGameplayEffectsDataAsset;
+
+DECLARE_DELEGATE_OneParam(FOnMainAttributeChangedSignature, FSKAttributeChangeData);
 
 UCLASS(meta = (PrioritizeCategories = "SK DEBUGGING"))
 class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCharacter, public IAbilitySystemInterface
@@ -67,47 +69,28 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     UFUNCTION(BlueprintPure)
     FORCEINLINE float GetHealthPercent() const;
 
-    UFUNCTION(BlueprintCallable, Category = "SK Character|Attributes")
+    UFUNCTION(BlueprintPure, Category = "SK Character|Attributes")
     bool IsStaminaFull() const;
-    UFUNCTION(BlueprintCallable, Category = "SK Character|Attributes")
+    UFUNCTION(BlueprintPure, Category = "SK Character|Attributes")
     bool IsHeathFull() const;
-    UFUNCTION(BlueprintCallable, Category = "SK Character|Attributes")
+    UFUNCTION(BlueprintPure, Category = "SK Character|Attributes")
     bool IsDead() const;
 
-    UFUNCTION()
+    UFUNCTION(BlueprintCallable, Category = "SK Character|Attributes")
     virtual void HandleDeath();
 
   private:
-    void HandleStaminaChange(const float ChangedAmount);
-    void HandleStaminaDepleted();
-    void HandleHealthChange(const float ChangedAmount);
+    void HandleMainAttributeChange(const FSKAttributeChangeData ChangedAttributeInfo);
 
-    template <typename T>
-    FORCEINLINE void HandleRegenTimer(FTimerHandle &TimerHandle, T *Object, void (T::*Function)(), float LoopingTime,
-                                      float InitialDelay)
-    {
-        if (GetWorldTimerManager().IsTimerActive(TimerHandle))
-        {
-            GetWorldTimerManager().ClearTimer(TimerHandle);
-            GetWorldTimerManager().SetTimer(TimerHandle, Object, Function, LoopingTime, false, InitialDelay);
-        }
-        else
-        {
-            GetWorldTimerManager().SetTimer(TimerHandle, Object, Function, LoopingTime, false, InitialDelay);
-        }
-    }
     /************************************ MOVEMENT  ******************************************/
   public:
-    UFUNCTION(BlueprintCallable)
-    void StartSprinting() const;
-    UFUNCTION(BlueprintCallable)
+    UFUNCTION(BlueprintCallable, Category = "SK Character movement")
+    void TrySprinting() const;
+    UFUNCTION(BlueprintCallable, Category = "SK Character movement")
     void TryRunning() const;
-    UFUNCTION(BlueprintCallable)
+    UFUNCTION(BlueprintCallable, Category = "SK Character movement")
     void TryWalking();
-    UFUNCTION(BlueprintCallable)
-    void TryJumping();
-    UFUNCTION(BlueprintCallable)
-    void TrySprinting();
+
     UFUNCTION(BlueprintPure, Category = "SK Character|movement")
     float GetCharacterMovementAngle() const;
 
@@ -116,28 +99,15 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
 
     virtual void Landed(const FHitResult &Hit);
 
-    UPROPERTY(BlueprintAssignable, Category = "SK Character|Events")
-    FOnStartedSprintingSignature OnStartedSprinting;
-    UPROPERTY(BlueprintAssignable, Category = "SK Character|Events")
-    FOnStartedRunningSignature OnStartedRunning;
-
-    FOnStaminaChangedSignature OnStaminaChanged;
-    FOnHealthChangedSignature OnHealthChanged;
+    FOnMainAttributeChangedSignature OnMainAttributeChanged;
 
     /************************************ ACTIONS  ******************************************/
   public:
-    UFUNCTION(BlueprintCallable) void TryDrawWeapon();
-    UFUNCTION(BlueprintCallable) void TrySwitchWeapon();
-
-    UFUNCTION(BlueprintCallable) void TryAttacking();
-    UFUNCTION(BlueprintCallable) void TryBlocking();
-
-    void EquipItem(USKInventoryObjectData *ObjectData);
+    void HandleUseItem(USKInventoryObjectData *ObjectData);
 
     /************************************ State  ******************************************/
   public:
     bool IsCharacterMoving() const;
-    virtual bool CanJumpInternal_Implementation() const override;
 
     UFUNCTION(BlueprintPure, Category = "SK Character|State")
     bool CanSprint(uint8 RequiredStaminaPercentage = 25) const;
@@ -152,6 +122,9 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     UFUNCTION(BlueprintCallable, Category = "SK Character|Interactions")
     const AActor *GetInteractionTarget() const { return InteractionTarget.Get(); }
 
+    UFUNCTION(BlueprintCallable, Category = "SK Character|Interactions")
+    virtual void Interact();
+
   protected:
     UPROPERTY(BlueprintReadWrite)
     TObjectPtr<UCapsuleComponent> InteractionZone;
@@ -161,7 +134,6 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
 
     void HandleInteractionsTimer();
     virtual void HandleInteractionActor();
-    virtual void Interact();
 
     /************************************ MULTITHREADING  ******************************************/
   protected:
@@ -191,14 +163,18 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
 
     /************************************ Timers ******************************************/
   private:
-    FTimerHandle StaminaRegenTimerHandle;
-    FTimerHandle HealthRegenTimerHandle;
-    FTimerHandle InteractionTimer;
+    FTimerHandle InteractableActiveUpdateTimer;
 
     /************************************ Data assets  ******************************************/
   public:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Character|Data Assets")
     USKCharacterAnimationsDataAsset *AnimationsDA = nullptr;
+
+    UPROPERTY(EditAnywhere, Category = "SK Ability System|Data Assets")
+    TObjectPtr<USKAbilitiesDataAsset> GrantedAbilitiesDataAsset;
+
+    UPROPERTY(EditAnywhere, Category = "SK Ability System|Data Assets")
+    TObjectPtr<USKBasicGameplayEffectsDataAsset> BasicGameplayEffects;
 
     /************************************ DEBUGGING  ******************************************/
   public:

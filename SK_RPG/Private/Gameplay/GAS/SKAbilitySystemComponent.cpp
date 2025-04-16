@@ -4,56 +4,96 @@
 #include "Core/SKLogCategories.h"
 #include "Gameplay/GAS/Abilities/SKAbilityBase.h"
 #include "Logging/StructuredLog.h"
-#include "Utils/DataAssets/SKAbilitiesDataAsset.h"
 #include "Utils/DataAssets/SKBasicGameplayEffectsDataAsset.h"
 
 void USKAbilitySystemComponent::BeginPlay()
 {
     Super::BeginPlay();
-
-    InitAbilities();
-    ValidateGEDataAssets();
+    OnGameplayEffectAppliedDelegateToSelf.AddUObject(this, &USKAbilitySystemComponent::HandleEffectApplied);
 }
 
-bool USKAbilitySystemComponent::IsAbilityActive(TSubclassOf<UGameplayAbility> AbilityClass) const
+void USKAbilitySystemComponent::AbilityInputTagPressed(const FGameplayTag &InputTag)
 {
-    if (!AbilityClass)
-    {
-        return false;
-    }
+    if (!InputTag.IsValid()) return;
 
-    for (const FGameplayAbilitySpec &Spec : GetActivatableAbilities())
+    //UE_LOGFMT(LogSKInput, Display, "Received pressed {1}", InputTag.ToString());
+
+    FScopedAbilityListLock ActiveScopeLoc(*this);
+    for (FGameplayAbilitySpec &AbilitySpec : GetActivatableAbilities())
     {
-        if (Spec.Ability && Spec.Ability->GetClass() == AbilityClass)
+        if (AbilitySpec.DynamicAbilityTags.HasTagExact(InputTag))
         {
-            if (Spec.IsActive())
+            AbilitySpecInputPressed(AbilitySpec);
+            if (AbilitySpec.IsActive())
             {
-                return true;
+                InvokeReplicatedEvent(EAbilityGenericReplicatedEvent::InputPressed, AbilitySpec.Handle,
+                                      AbilitySpec.ActivationInfo.GetActivationPredictionKey());
             }
         }
     }
-
-    return false;
 }
 
-bool USKAbilitySystemComponent::CancelAbilityByClass(
-    TSubclassOf<UGameplayAbility> AbilityClass) // returns true if the ability was succesfully canceled
+void USKAbilitySystemComponent::AbilityInputTagHeld(const FGameplayTag &InputTag)
 {
+    if (!InputTag.IsValid()) return;
 
-    for (const FGameplayAbilitySpec &Spec : GetActivatableAbilities())
+    //UE_LOGFMT(LogSKInput, Display, "Received held {1}", InputTag.ToString());
+
+    FScopedAbilityListLock ActiveScopeLoc(*this);
+    for (FGameplayAbilitySpec &AbilitySpec : GetActivatableAbilities())
     {
-        if (Spec.Ability && Spec.Ability->GetClass() == AbilityClass)
+        if (AbilitySpec.DynamicAbilityTags.HasTagExact(InputTag))
         {
-            if (Spec.IsActive())
+            AbilitySpecInputPressed(AbilitySpec);
+            if (!AbilitySpec.IsActive())
             {
-                CancelAbility(Spec.Ability);
-                return true;
+                TryActivateAbility(AbilitySpec.Handle);
             }
         }
     }
-
-    return false;
 }
+
+void USKAbilitySystemComponent::AbilityInputTagReleased(const FGameplayTag &InputTag)
+{
+    if (!InputTag.IsValid()) return;
+
+    //UE_LOGFMT(LogSKInput, Display, "Received released {1}", InputTag.ToString());
+
+    FScopedAbilityListLock ActiveScopeLoc(*this);
+    for (FGameplayAbilitySpec &AbilitySpec : GetActivatableAbilities())
+    {
+        if (AbilitySpec.DynamicAbilityTags.HasTagExact(InputTag) && AbilitySpec.IsActive())
+        {
+            AbilitySpecInputReleased(AbilitySpec);
+            InvokeReplicatedEvent(EAbilityGenericReplicatedEvent::InputReleased, AbilitySpec.Handle,
+                                  AbilitySpec.ActivationInfo.GetActivationPredictionKey());
+        }
+    }
+}
+
+void USKAbilitySystemComponent::HandleEffectApplied(UAbilitySystemComponent *AbilitySystemComponent,
+                                                    const FGameplayEffectSpec &EffectSpec,
+                                                    FActiveGameplayEffectHandle ActiveEffectHandle)
+{
+    FGameplayTagContainer TagContainer;
+    EffectSpec.GetAllAssetTags(TagContainer);
+
+    EffectAssetTags.Broadcast(TagContainer);
+}
+
+void USKAbilitySystemComponent::WatchTag(FGameplayTag TagToWatch)
+{
+    RegisterGameplayTagEvent(TagToWatch, EGameplayTagEventType::NewOrRemoved)
+        .AddUObject(this, &USKAbilitySystemComponent::HandleTagChanged);
+}
+
+void USKAbilitySystemComponent::HandleTagChanged(const FGameplayTag Tag, int32 NewCount)
+{
+    const bool bAdded = NewCount > 0;
+    OnTagChanged.Broadcast(Tag, bAdded);
+}
+
+//
 
 bool USKAbilitySystemComponent::CheckAndAddGameplayTag(const FGameplayTag &Tag)
 {
@@ -81,6 +121,8 @@ bool USKAbilitySystemComponent::CheckAndRemoveGameplayTag(const FGameplayTag &Ta
     }
 }
 
+//
+
 FGameplayEffectSpecHandle USKAbilitySystemComponent::MakeGESpecHandle(
     const TSubclassOf<UGameplayEffect> &GameplayEffectClass)
 {
@@ -93,131 +135,30 @@ FGameplayEffectSpecHandle USKAbilitySystemComponent::MakeGESpecHandle(
     return gERegenSpec;
 }
 
-void USKAbilitySystemComponent::StartStaminaRegeneration()
+//
+
+void USKAbilitySystemComponent::AddCharacterAbilities(const TArray<TSubclassOf<UGameplayAbility>> &StartupAbilities)
 {
-    if (StaminaRegenActiveGESpecHandle.IsValid()) return;
-
-    StaminaRegenActiveGESpecHandle = ApplyGameplayEffectSpecToSelf(
-        *MakeGESpecHandle(BasicGameplayEffectsDataAsset->StaminaRegenGameplayEffect).Data.Get());
-    check(StaminaRegenActiveGESpecHandle.IsValid());
-
-    UE_LOGFMT(LogSKAbilitySystem, Display, "{Owner} succesfully applied {Effect}", ("Owner", GetOwner()->GetName()),
-              ("Effect", BasicGameplayEffectsDataAsset->StaminaRegenGameplayEffect->GetName()));
-}
-
-void USKAbilitySystemComponent::StopStaminaRegeneration()
-{
-    if (!StaminaRegenActiveGESpecHandle.IsValid()) return;
-
-    RemoveActiveGameplayEffect(StaminaRegenActiveGESpecHandle);
-    StaminaRegenActiveGESpecHandle.Invalidate();
-
-    if (!StaminaRegenActiveGESpecHandle.IsValid())
-        UE_LOGFMT(LogSKAbilitySystem, Display, "{Owner} succesfully removed {Effect}", ("Owner", GetOwner()->GetName()),
-                  ("Effect", BasicGameplayEffectsDataAsset->StaminaRegenGameplayEffect->GetName()));
-}
-
-void USKAbilitySystemComponent::StartHealthRegeneration()
-{
-    if (HealthRegenActiveGESpecHandle.IsValid()) return;
-
-    HealthRegenActiveGESpecHandle = ApplyGameplayEffectSpecToSelf(
-        *MakeGESpecHandle(BasicGameplayEffectsDataAsset->HealthRegenGameplayEffect).Data.Get());
-    check(HealthRegenActiveGESpecHandle.IsValid());
-
-    UE_LOGFMT(LogSKAbilitySystem, Display, "{Owner} succesfully applied {Effect}", ("Owner", GetOwner()->GetName()),
-              ("Effect", BasicGameplayEffectsDataAsset->HealthRegenGameplayEffect->GetName()));
-}
-
-void USKAbilitySystemComponent::StopHealthRegeneration()
-{
-    if (!HealthRegenActiveGESpecHandle.IsValid()) return;
-
-    RemoveActiveGameplayEffect(HealthRegenActiveGESpecHandle);
-    HealthRegenActiveGESpecHandle.Invalidate();
-
-    UE_LOGFMT(LogSKAbilitySystem, Display, "{Owner} succesfully removed {Effect}", ("Owner", GetOwner()->GetName()),
-              ("Effect", BasicGameplayEffectsDataAsset->HealthRegenGameplayEffect->GetName()));
-}
-
-void USKAbilitySystemComponent::ApplyFallDamage(const float &FallSpeed)
-{
-    auto EffectSpec = MakeGESpecHandle(BasicGameplayEffectsDataAsset->FallDamageGameplayEffect);
-
-    if (-FallSpeed < LandingSpeedRange.X) return;
-
-    EffectSpec.Data->SetSetByCallerMagnitude(FGameplayTag::RequestGameplayTag(FName("Character.Data.FallDamage")),
-                                             CalculateFallDamage(FallSpeed));
-    ApplyGameplayEffectSpecToSelf(*EffectSpec.Data.Get());
-}
-
-void USKAbilitySystemComponent::InitAbilities()
-{
-    InitAbilityActorInfo(GetOwner(), GetOwner());
-
-    GiveAbility(FGameplayAbilitySpec(USKAbilityBase::StaticClass(), 1, 0));
-
-    if (SprintingAbility)
+    for (const TSubclassOf<UGameplayAbility> AbilityClass : StartupAbilities)
     {
-        GiveAbility(FGameplayAbilitySpec(SprintingAbility, 1, 0));
-    }
-    else
-    {
-        SprintingAbility = USKAbilityBase::StaticClass();
-        UE_LOGFMT(
-            LogSKAbilitySystem, Warning,
-            "Actor '{ActorName}' sprinting ability was not assigned! Basic ability was assigned automatically instead.",
-            ("ActorName", GetOwner()->GetName()));
-    }
-
-    if (InteractAbility)
-    {
-        GiveAbility(FGameplayAbilitySpec(InteractAbility, 1, 0));
-    }
-    else
-    {
-        SprintingAbility = USKAbilityBase::StaticClass();
-        UE_LOGFMT(
-            LogSKAbilitySystem, Warning,
-            "Actor '{ActorName}' interact ability was not assigned! Basic ability was assigned automatically instead.",
-            ("ActorName", GetOwner()->GetName()));
-    }
-
-    if (!GrantedAbilities.IsEmpty())
-    {
-        for (auto &Ability : GrantedAbilities)
+        FGameplayAbilitySpec AbilitySpec = FGameplayAbilitySpec(AbilityClass, 1);
+        if (const auto *SKAbility = Cast<USKAbilityBase>(AbilitySpec.Ability))
         {
-            GiveAbility(FGameplayAbilitySpec(Ability, 1, 0, GetOwner()));
-        }
-    }
-
-    if (GrantedAbilitiesDataAsset)
-    {
-        if (!GrantedAbilitiesDataAsset->GrantedAbilities.IsEmpty())
-        {
-            for (auto &Ability : GrantedAbilitiesDataAsset->GrantedAbilities)
-            {
-                GiveAbility(FGameplayAbilitySpec(Ability, 1, 0, GetOwner()));
-            }
+            AbilitySpec.DynamicAbilityTags.AddTag(SKAbility->StartupInputTag);
+            GiveAbility(AbilitySpec);
         }
     }
 }
 
-void USKAbilitySystemComponent::ValidateGEDataAssets() const
+void USKAbilitySystemComponent::AddCharacterPassiveAbilities(
+    const TArray<TSubclassOf<UGameplayAbility>> &StartupPassiveAbilities)
 {
-    if (BasicGameplayEffectsDataAsset)
+    for (const TSubclassOf<UGameplayAbility> AbilityClass : StartupPassiveAbilities)
     {
-        BasicGameplayEffectsDataAsset->ValidateData();
+        FGameplayAbilitySpec AbilitySpec = FGameplayAbilitySpec(AbilityClass, 1);
+        if (const auto *SKAbility = Cast<USKAbilityBase>(AbilitySpec.Ability))
+        {
+            GiveAbilityAndActivateOnce(AbilitySpec);
+        }
     }
-    else
-    {
-        UE_LOGFMT(LogSKAbilitySystem, Error, "{Owner} has no Gameplay Effects Data Asset!",
-                  ("Owner", GetOwner()->GetName()));
-        checkNoEntry()
-    }
-}
-
-const float USKAbilitySystemComponent::CalculateFallDamage(const float &FallSpeed)
-{
-    return FMath::GetMappedRangeValueClamped(LandingSpeedRange, LandingDamageRange, -FallSpeed) * -1.0f;
 }

@@ -13,6 +13,25 @@
     GAMEPLAYATTRIBUTE_VALUE_SETTER(PropertyName)                                                                       \
     GAMEPLAYATTRIBUTE_VALUE_INITTER(PropertyName)
 
+USTRUCT()
+struct FSKAttributeChangeData
+{
+    // attribute related
+    float ChangedAmount;
+    float CurrentValue;
+    float MaxValue;
+
+    FGameplayTag AttributeTag;
+
+    // Tags for gameplay events
+    FGameplayTag EventIncreasedTag;
+    FGameplayTag EventDecreasedTag;
+    FGameplayTag EventDepletedTag;
+    FGameplayTag EventFullTag;
+
+    GENERATED_BODY()
+};
+
 UCLASS()
 class SIRKNIGHT_API USKAttributeSet : public UAttributeSet
 {

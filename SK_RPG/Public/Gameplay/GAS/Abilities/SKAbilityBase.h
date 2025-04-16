@@ -16,6 +16,9 @@ class SIRKNIGHT_API USKAbilityBase : public UGameplayAbility
   public:
     USKAbilityBase();
 
+    UPROPERTY(EditDefaultsOnly, Category = "Input")
+    FGameplayTag StartupInputTag;
+
     virtual void OnGiveAbility(const FGameplayAbilityActorInfo *ActorInfo, const FGameplayAbilitySpec &Spec);
 
     UFUNCTION(BlueprintCallable, Category = "SK Getters")

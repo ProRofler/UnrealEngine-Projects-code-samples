@@ -2,9 +2,11 @@
 
 #include "Controllers/SKPlayerController.h"
 #include "Characters/SKPlayerCharacter.h"
+#include "Core/Input/SKAbilityInputConfigDataAsset.h"
+#include "Core/Input/SKInputComponent.h"
 #include "Core/SKLogCategories.h"
-#include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
+#include "Gameplay/GAS/SKAbilitySystemComponent.h"
 #include "Logging/StructuredLog.h"
 #include "UI/SKPlayerHUD.h"
 #include "UI/Widgets/SKInventoryWidget.h"
@@ -14,7 +16,6 @@ void ASKPlayerController::BeginPlay()
     Super::BeginPlay();
 
     ControllerSetup();
-    InitializeComponents();
 }
 
 void ASKPlayerController::ToggleInventoryHUD()
@@ -46,9 +47,10 @@ void ASKPlayerController::OnPossess(APawn *aPawn)
 
     Super::OnPossess(aPawn);
 
-    if (UEnhancedInputComponent *Input = CastChecked<UEnhancedInputComponent>(InputComponent))
+    InitializeComponents();
+
+    if (USKInputComponent *Input = CastChecked<USKInputComponent>(InputComponent))
     {
-        SKPlayerCharacter = CastChecked<ASKPlayerCharacter>(GetCharacter());
 
         Input->BindAction(InputData.MovingAction, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
                           &ASKPlayerCharacter::MoveAction);
@@ -58,26 +60,16 @@ void ASKPlayerController::OnPossess(APawn *aPawn)
                           &ASKPlayerCharacter::LookingAction);
         Input->BindAction(InputData.LookAction, ETriggerEvent::Completed, SKPlayerCharacter.Get(),
                           &ASKPlayerCharacter::LookingAction);
-        Input->BindAction(InputData.JumpAction, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
-                          &ASKPlayerCharacter::TryJumping);
-        Input->BindAction(InputData.SprintAction, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
-                          &ASKPlayerCharacter::TrySprinting);
         Input->BindAction(InputData.WalkAction, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
                           &ASKPlayerCharacter::TryWalking);
         Input->BindAction(InputData.AltAction, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
                           &ASKPlayerCharacter::HandleAlternativeAction);
-        Input->BindAction(InputData.InteractionAction, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
-                          &ASKPlayerCharacter::Interact);
-        Input->BindAction(InputData.InteractionActionHold, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
-                          &ASKPlayerCharacter::HandleGrabbing);
         Input->BindAction(InputData.InventoryToggleAction, ETriggerEvent::Triggered, this,
                           &ASKPlayerController::ToggleInventoryHUD);
-        Input->BindAction(InputData.DrawWeaponAction, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
-                          &ASKPlayerCharacter::TryDrawWeapon);
-        Input->BindAction(InputData.AttackAction, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
-                          &ASKPlayerCharacter::TryAttacking);
-        Input->BindAction(InputData.BlockAction, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
-                          &ASKPlayerCharacter::TryBlocking);
+
+        Input->BindAbilityActions(InputConfig, this, &ASKPlayerController::AbilityInputTagPressed,
+                                  &ASKPlayerController::AbilityInputTagReleased,
+                                  &ASKPlayerController::AbilityInputTagHeld);
     }
 }
 
@@ -97,4 +89,24 @@ void ASKPlayerController::ControllerSetup()
     }
 }
 
-void ASKPlayerController::InitializeComponents() { PlayerHUD = CastChecked<ASKPlayerHUD>(GetHUD()); }
+void ASKPlayerController::InitializeComponents()
+{
+    SKPlayerCharacter = CastChecked<ASKPlayerCharacter>(GetCharacter());
+    PlayerHUD = CastChecked<ASKPlayerHUD>(GetHUD());
+    SKAbilitySystemComponent = CastChecked<USKAbilitySystemComponent>(SKPlayerCharacter->GetAbilitySystemComponent());
+}
+
+void ASKPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)
+{
+    if (SKAbilitySystemComponent.IsValid()) SKAbilitySystemComponent.Get()->AbilityInputTagPressed(InputTag);
+}
+
+void ASKPlayerController::AbilityInputTagReleased(FGameplayTag InputTag)
+{
+    if (SKAbilitySystemComponent.IsValid()) SKAbilitySystemComponent.Get()->AbilityInputTagReleased(InputTag);
+}
+
+void ASKPlayerController::AbilityInputTagHeld(FGameplayTag InputTag)
+{
+    if (SKAbilitySystemComponent.IsValid()) SKAbilitySystemComponent.Get()->AbilityInputTagHeld(InputTag);
+}

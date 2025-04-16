@@ -12,7 +12,7 @@
 #include "Gameplay/Interactables/SKKeyItem.h"
 
 #include "Gameplay/GAS/SKAbilitySystemComponent.h"
-#include "Gameplay/GAS/SKCommonGameplayTagsLib.h"
+#include "Gameplay/GAS/SKNativeGameplayTags.h"
 
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetMathLibrary.h"
@@ -100,7 +100,7 @@ void ASKPlayerCharacter::LookingAction(const FInputActionValue &Value)
         const auto LookingAxisX = Value.Get<FVector2D>().X;
         const auto LookingAxisY = Value.Get<FVector2D>().Y * -1;
 
-        if (!AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_RotatingItem()))
+        if (!AbilitySystemComponent->HasMatchingGameplayTag(FSKGameplayTags::Get().Character_State_Action_RotatingItem))
         {
             AddControllerYawInput(LookingAxisX);
             AddControllerPitchInput(LookingAxisY);
@@ -248,11 +248,21 @@ void ASKPlayerCharacter::PrintDebugInfo()
 
 void ASKPlayerCharacter::HandleInteractionActor()
 {
+    const auto tagCanInteract = FSKGameplayTags::Get().Character_State_Action_CanInteract;
+
+    // No calculation if currently grabbing item
+    if (AbilitySystemComponent->HasMatchingGameplayTag(FSKGameplayTags::Get().Character_State_Action_GrabbingItem))
+    {
+        AbilitySystemComponent->CheckAndRemoveGameplayTag(tagCanInteract);
+        InteractionTarget = nullptr; // Explicitly clearing interaction target
+        return;
+    }
+
     InteractionTarget = GetLookedAtActor();
 
     if (!InteractionTarget.IsValid())
     {
-        AbilitySystemComponent->CheckAndRemoveGameplayTag(USKCommonGameplayTagsLib::GetTag_CanInteract());
+        AbilitySystemComponent->CheckAndRemoveGameplayTag(tagCanInteract);
         return;
     }
 
@@ -272,31 +282,11 @@ void ASKPlayerCharacter::HandleInteractionActor()
     if (TraceCheck.GetActor() == InteractionTarget || TraceCheck.GetActor()->Implements<USKInterfaceInteractable>())
     {
         InteractionTarget = TraceCheck.GetActor();
-        AbilitySystemComponent->CheckAndAddGameplayTag(USKCommonGameplayTagsLib::GetTag_CanInteract());
+        AbilitySystemComponent->CheckAndAddGameplayTag(tagCanInteract);
     }
     else
     {
         InteractionTarget = nullptr;
-    }
-}
-
-void ASKPlayerCharacter::Interact()
-{
-    if (AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem()))
-    {
-        PhysicsHandle->ReleaseItem();
-        AbilitySystemComponent->RemoveLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem());
-        AbilitySystemComponent->RemoveLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_RotatingItem());
-    }
-    else if (!InteractionTarget.IsValid())
-    {
-        return;
-    }
-    else
-    {
-        ASKBaseCharacter::Interact();
-        if (SKPlayerController->GetPlayerHUD()->IsInventoryOpen())
-            SKPlayerController->GetPlayerHUD()->GetInventoryWidget()->UpdateInventoryWidget();
     }
 }
 
@@ -339,42 +329,40 @@ bool ASKPlayerCharacter::CanGrabItem()
 {
     if (!InteractionTarget.IsValid()) return false;
 
-    const bool canInteract =
-        AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_CanInteract());
-
-    const bool grabbingItem =
-        AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem());
-
-    const bool targetSimulatesPhysics = InteractionTarget->GetRootComponent()->IsSimulatingPhysics();
-
-    return canInteract && !grabbingItem && targetSimulatesPhysics;
+    return InteractionTarget->GetRootComponent()->IsSimulatingPhysics();
 }
 
 void ASKPlayerCharacter::HandleGrabbing()
 {
+    const auto tagGrabbingItem = FSKGameplayTags::Get().Character_State_Action_GrabbingItem;
+    const auto tagRotatingItem = FSKGameplayTags::Get().Character_State_Action_RotatingItem;
+
     if (CanGrabItem())
     {
-        AbilitySystemComponent->CheckAndAddGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem());
+        AbilitySystemComponent->CheckAndAddGameplayTag(tagGrabbingItem);
         PhysicsHandle->GrabItem(InteractionTarget->GetComponentByClass<UMeshComponent>());
     }
     else if (!CanGrabItem() && PhysicsHandle->GetGrabbedComponent())
     {
-        AbilitySystemComponent->CheckAndRemoveGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem());
-        AbilitySystemComponent->CheckAndRemoveGameplayTag(USKCommonGameplayTagsLib::GetTag_RotatingItem());
+        AbilitySystemComponent->CheckAndRemoveGameplayTag(tagGrabbingItem);
+        AbilitySystemComponent->CheckAndRemoveGameplayTag(tagRotatingItem);
         PhysicsHandle->ReleaseItem();
     }
 }
 
 void ASKPlayerCharacter::HandleAlternativeAction()
 {
-    if (AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_GrabbingItem()) &&
-        !AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_RotatingItem()))
+    const auto tagGrabbingItem = FSKGameplayTags::Get().Character_State_Action_GrabbingItem;
+    const auto tagRotatingItem = FSKGameplayTags::Get().Character_State_Action_RotatingItem;
+
+    if (AbilitySystemComponent->HasMatchingGameplayTag(tagGrabbingItem) &&
+        !AbilitySystemComponent->HasMatchingGameplayTag(tagRotatingItem))
     {
-        AbilitySystemComponent->AddLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_RotatingItem());
+        AbilitySystemComponent->AddLooseGameplayTag(tagRotatingItem);
     }
-    else if (AbilitySystemComponent->HasMatchingGameplayTag(USKCommonGameplayTagsLib::GetTag_RotatingItem()))
+    else if (AbilitySystemComponent->HasMatchingGameplayTag(tagRotatingItem))
     {
-        AbilitySystemComponent->RemoveLooseGameplayTag(USKCommonGameplayTagsLib::GetTag_RotatingItem());
+        AbilitySystemComponent->RemoveLooseGameplayTag(tagRotatingItem);
     }
     else
     {

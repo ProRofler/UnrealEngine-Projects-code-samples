@@ -4,6 +4,7 @@
 
 #include "Characters/SKBaseCharacter.h"
 #include "CoreMinimal.h"
+
 #include "SKPlayerCharacter.generated.h"
 
 class UCameraComponent;
@@ -73,14 +74,15 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
 
     void HandleAlternativeAction();
     virtual void HandleInteractionActor() override;
-    virtual void Interact() override;
     void DropItem(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop);
+
+    UFUNCTION(BlueprintCallable, Category = "SK Grabbing")
+    void HandleGrabbing();
+    UFUNCTION(BlueprintPure, Category = "SK Grabbing")
+    bool CanGrabItem();
 
   private:
     TWeakObjectPtr<ASKPlayerController> SKPlayerController = nullptr;
-
-    void HandleGrabbing();
-    bool CanGrabItem();
 
     /************************************ DEBUG ******************************************/
   protected:

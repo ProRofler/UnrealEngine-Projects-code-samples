@@ -16,7 +16,7 @@ USKInventoryComponent::USKInventoryComponent() { PrimaryComponentTick.bCanEverTi
 //
 /********************* Equip handling *********************/
 
-void USKInventoryComponent::HandleEquip(USKInventoryObjectData *ObjectData)
+void USKInventoryComponent::HandleUseItem(USKInventoryObjectData *ObjectData)
 {
     if (!ObjectData) return;
 
