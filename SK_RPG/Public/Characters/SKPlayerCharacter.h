@@ -10,7 +10,7 @@
 class UCameraComponent;
 class ASKPlayerController;
 class ASKPlayerHUD;
-class USKInventoryWidget;
+class USKListViewWidget;
 class USKPhysicsHandleComponent;
 class USKInventoryObjectData;
 
@@ -21,8 +21,8 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
 
   public:
     friend USKPhysicsHandleComponent;
-    friend USKInventoryWidget;
     friend ASKPlayerController;
+    friend USKListViewWidget;
 
     ASKPlayerCharacter(const FObjectInitializer &ObjectInitializer);
 

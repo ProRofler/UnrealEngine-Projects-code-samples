@@ -12,53 +12,14 @@ void ASKPlayerHUD::BeginPlay()
 {
     Super::BeginPlay();
 
-    InventoryWidget = CastChecked<USKInventoryWidget>(CreateWidget(GetWorld(), InventoryWidgetClass));
-    MainAttributesWidget = CastChecked<USKMainAttributesWidget>(CreateWidget(GetWorld(), MainAttributesWidgettClass));
+    PlayerUIWidget = CastChecked<USKUserWidgetBase>(CreateWidget(GetWorld(), PlayerUIWidgetClass));
     SKPlayer = CastChecked<ASKPlayerCharacter>(GetOwningPlayerController()->GetCharacter());
 
-    if (InventoryWidget && MainAttributesWidget)
-    {
-        InventoryWidget->AddToViewport(10);
-        InventoryWidget->SetVisibility(ESlateVisibility::Collapsed);
+    SKPlayer->OnCharacterDeath.AddDynamic(this, &ASKPlayerHUD::HandlePlayerDeath);
 
-        MainAttributesWidget->AddToViewport(0);
-        MainAttributesWidget->SetVisibility(ESlateVisibility::Visible);
-    }
-    else
-    {
-        UE_LOG(LogSKUserInterface, Error, TEXT("One of the widgets is nullptr!"));
-    }
+    PlayerUIWidget->AddToViewport(10);
 }
 
-void ASKPlayerHUD::DrawHUD()
-{
-    Super::DrawHUD();
-}
+void ASKPlayerHUD::HandlePlayerDeath() { PlayerUIWidget->RemoveFromViewport(); }
 
-void ASKPlayerHUD::DrawCrosshair()
-{
-    TInterval<float> ScreenCenter(Canvas->SizeX * 0.5f, Canvas->SizeY * 0.5f);
-    // Draw horizontal line
-    DrawLine(ScreenCenter.Min - 10, ScreenCenter.Max, ScreenCenter.Min + 10, ScreenCenter.Max, FLinearColor::Blue,
-             2.0f);
-    // Draw horizontal line
-    DrawLine(ScreenCenter.Min, ScreenCenter.Max - 10, ScreenCenter.Min, ScreenCenter.Max + 10, FLinearColor::Blue,
-             2.0f);
-}
-
-void ASKPlayerHUD::ToggleInventoryVisibility()
-{
-    if (InventoryWidget)
-    {
-        switch (bIsInventoryOpen)
-        {
-        case (0):
-            InventoryWidget->HandleInventoryOpen();
-            InventoryWidget->SetVisibility(ESlateVisibility::Visible);
-            break;
-        default: InventoryWidget->SetVisibility(ESlateVisibility::Collapsed); break;
-        }
-
-        bIsInventoryOpen = !bIsInventoryOpen;
-    }
-}
+// void ASKPlayerHUD::DrawHUD() { Super::DrawHUD(); }

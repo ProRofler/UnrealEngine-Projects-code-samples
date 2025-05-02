@@ -24,6 +24,7 @@ struct FSKGameplayTags
     FGameplayTag Character_State_Action_RotatingItem;
 
     FGameplayTag Character_State_Combat_Attacking;
+    FGameplayTag Character_State_Combat_ActiveAttacking;
     FGameplayTag Character_State_Combat_Blocking;
     FGameplayTag Character_State_Combat_WeaponUnsheathed;
 
@@ -48,6 +49,9 @@ struct FSKGameplayTags
     FGameplayTag Event_Attibute_Full_Health;
 
     FGameplayTag Event_Ability_UseItem;
+
+    FGameplayTag Event_Combat_SwitchWeapon;
+    FGameplayTag Event_Combat_Hit;
 
     FGameplayTag Effect_Data_FallDamage;
 

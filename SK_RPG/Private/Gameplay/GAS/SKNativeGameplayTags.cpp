@@ -33,6 +33,9 @@ void FSKGameplayTags::InitializeNativeGameplayTags()
     GameplayTags.Character_State_Combat_Attacking =
         UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Character.State.Combat.Attacking"));
 
+    GameplayTags.Character_State_Combat_ActiveAttacking =
+        UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Character.State.Combat.ActiveAttacking"));
+
     GameplayTags.Character_State_Combat_Blocking =
         UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Character.State.Combat.Blocking"));
 
@@ -104,6 +107,12 @@ void FSKGameplayTags::InitializeNativeGameplayTags()
     // Ability activation
     GameplayTags.Event_Ability_UseItem =
         UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Ability.UseItem"));
+
+    // Misc
+    GameplayTags.Event_Combat_SwitchWeapon =
+        UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Combat.SwitchWeapon"));
+
+    GameplayTags.Event_Combat_Hit = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Combat.Hit"));
 
     /*
      * Gameplay effects

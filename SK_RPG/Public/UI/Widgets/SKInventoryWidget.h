@@ -7,43 +7,35 @@
 
 #include "SKInventoryWidget.generated.h"
 
-class UListView;
 class ASKPlayerCharacter;
 class USKInventoryObjectData;
+class USKListViewWidget;
 
 UCLASS()
 class SIRKNIGHT_API USKInventoryWidget : public USKUserWidgetBase
 {
+
     GENERATED_BODY()
 
   public:
     virtual void NativeConstruct() override;
 
-    TObjectPtr<UListView> GetListView() { return InventoryList; }
-
     UFUNCTION(BlueprintCallable, Category = "Inventory widget")
     void HandleInventoryOpen();
 
-    UFUNCTION(BlueprintCallable, Category = "Inventory widget")
-    void UpdateInventoryWidget();
-
-  protected:
     UPROPERTY(meta = (BindWidget))
-    TObjectPtr<UListView> InventoryList;
+    TObjectPtr<USKListViewWidget> WeaponsListViewWidget;
 
-    UFUNCTION()
-    void HandleDropItem(const USKItemListEntry *ListEntry, const int32 QuantityToDrop);
+    UPROPERTY(meta = (BindWidget))
+    TObjectPtr<USKListViewWidget> KeysListViewWidget;
 
-    UFUNCTION()
-    void HandleUseItem(const USKItemListEntry *ListEntry);
+    UPROPERTY(meta = (BindWidget))
+    TObjectPtr<USKListViewWidget> MiscListViewWidget;
 
   private:
     bool bIsPendingUpdate = true;
 
     void InitDelegates();
-
-    void HandleEntryWidgetGenerated(UUserWidget &EntryWidget);
-    void HandleEntryWidgetReleased(UUserWidget &EntryWidget);
 
     UFUNCTION()
     void HandleInventoryListUpdate();

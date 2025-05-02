@@ -28,6 +28,8 @@
 #include "EnhancedInputComponent.h"
 #include "EnhancedInputSubsystems.h"
 
+#include "ProfilingDebugging/CpuProfilerTrace.h"
+
 ASKPlayerCharacter::ASKPlayerCharacter(const FObjectInitializer &ObjectInitializer) : Super(ObjectInitializer)
 {
     PlayerCamera = CreateDefaultSubobject<UCameraComponent>("Player camera");
@@ -374,6 +376,10 @@ void ASKPlayerCharacter::HandleAlternativeAction()
 
 AActor *ASKPlayerCharacter::GetLookedAtActor() const
 {
+#if !UE_BUILD_SHIPPING
+    TRACE_CPUPROFILER_EVENT_SCOPE_STR("ASKPlayerCharacter::GetLookedAtActor");
+#endif
+
     double BestDotProduct = -1.0f;
     double Threshold = 0.0f;
     AActor *Item = nullptr;

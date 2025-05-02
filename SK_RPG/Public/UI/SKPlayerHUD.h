@@ -7,7 +7,6 @@
 #include "SKPlayerHUD.generated.h"
 
 class UUserWidget;
-class USKInventoryWidget;
 class USKMainAttributesWidget;
 class ASKPlayerCharacter;
 
@@ -17,33 +16,24 @@ class SIRKNIGHT_API ASKPlayerHUD : public AHUD
     GENERATED_BODY()
 
   public:
-    virtual void DrawHUD() override;
+    // virtual void DrawHUD() override;
 
-    TObjectPtr<USKInventoryWidget> &GetInventoryWidget() { return InventoryWidget; }
-    TObjectPtr<USKMainAttributesWidget> &GetMainAttributesWidget() { return MainAttributesWidget; }
+    UFUNCTION(BlueprintPure, Category = "SK HUD Getters")
+    USKUserWidgetBase *GetPlayerUIWidget() { return PlayerUIWidget; }
 
-    bool IsInventoryOpen() { return bIsInventoryOpen; }
-    void ToggleInventoryVisibility();
-
-    UFUNCTION(BlueprintPure, Category = "SK Getters")
+    UFUNCTION(BlueprintPure, Category = "SK GUD Getters")
     ASKPlayerCharacter *GetSKPlayerCharacter() { return SKPlayer.Get(); };
 
   protected:
     virtual void BeginPlay() override;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Widget classes")
-    TSubclassOf<USKInventoryWidget> InventoryWidgetClass;
-    TObjectPtr<USKInventoryWidget> InventoryWidget;
-
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Widget classes")
-    TSubclassOf<USKMainAttributesWidget> MainAttributesWidgettClass;
-    TObjectPtr<USKMainAttributesWidget> MainAttributesWidget;
-
-    UPROPERTY(BlueprintReadWrite, Category = "UI")
-    bool bIsInventoryOpen = false;
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Widget classes")
+    TSubclassOf<USKUserWidgetBase> PlayerUIWidgetClass;
+    TObjectPtr<USKUserWidgetBase> PlayerUIWidget;
 
   private:
-    void DrawCrosshair();
-
     TWeakObjectPtr<ASKPlayerCharacter> SKPlayer = nullptr;
+
+    UFUNCTION()
+    void HandlePlayerDeath();
 };

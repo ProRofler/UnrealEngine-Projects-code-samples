@@ -37,6 +37,7 @@ class USKAbilitiesDataAsset;
 class USKBasicGameplayEffectsDataAsset;
 
 DECLARE_DELEGATE_OneParam(FOnMainAttributeChangedSignature, FSKAttributeChangeData);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnCharacterDeathSignature);
 
 UCLASS(meta = (PrioritizeCategories = "SK DEBUGGING"))
 class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCharacter, public IAbilitySystemInterface
@@ -78,6 +79,9 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
 
     UFUNCTION(BlueprintCallable, Category = "SK Character|Attributes")
     virtual void HandleDeath();
+
+    UPROPERTY(BlueprintAssignable)
+    FOnCharacterDeathSignature OnCharacterDeath;
 
   private:
     void HandleMainAttributeChange(const FSKAttributeChangeData ChangedAttributeInfo);

@@ -6,6 +6,7 @@
 #include "Core/Input/SKInputComponent.h"
 #include "Core/SKLogCategories.h"
 #include "EnhancedInputSubsystems.h"
+#include "GameFramework/CharacterMovementComponent.h"
 #include "Gameplay/GAS/SKAbilitySystemComponent.h"
 #include "Logging/StructuredLog.h"
 #include "UI/SKPlayerHUD.h"
@@ -16,30 +17,6 @@ void ASKPlayerController::BeginPlay()
     Super::BeginPlay();
 
     ControllerSetup();
-}
-
-void ASKPlayerController::ToggleInventoryHUD()
-{
-    if (PlayerHUD.IsValid())
-    {
-        PlayerHUD->ToggleInventoryVisibility();
-
-        if (PlayerHUD->IsInventoryOpen())
-        {
-            bShowMouseCursor = true;
-
-            FInputModeGameAndUI InputMode;
-            InputMode.SetWidgetToFocus(PlayerHUD->GetInventoryWidget()->TakeWidget());
-            InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-
-            SetInputMode(InputMode);
-        }
-        else
-        {
-            bShowMouseCursor = false;
-            SetInputMode(FInputModeGameOnly());
-        }
-    }
 }
 
 void ASKPlayerController::OnPossess(APawn *aPawn)
@@ -64,8 +41,6 @@ void ASKPlayerController::OnPossess(APawn *aPawn)
                           &ASKPlayerCharacter::TryWalking);
         Input->BindAction(InputData.AltAction, ETriggerEvent::Triggered, SKPlayerCharacter.Get(),
                           &ASKPlayerCharacter::HandleAlternativeAction);
-        Input->BindAction(InputData.InventoryToggleAction, ETriggerEvent::Triggered, this,
-                          &ASKPlayerController::ToggleInventoryHUD);
 
         Input->BindAbilityActions(InputConfig, this, &ASKPlayerController::AbilityInputTagPressed,
                                   &ASKPlayerController::AbilityInputTagReleased,
@@ -94,6 +69,30 @@ void ASKPlayerController::InitializeComponents()
     SKPlayerCharacter = CastChecked<ASKPlayerCharacter>(GetCharacter());
     PlayerHUD = CastChecked<ASKPlayerHUD>(GetHUD());
     SKAbilitySystemComponent = CastChecked<USKAbilitySystemComponent>(SKPlayerCharacter->GetAbilitySystemComponent());
+}
+
+void ASKPlayerController::ToggleCursor()
+{
+
+    if (bIsInCursorMode == false)
+    {
+        bShowMouseCursor = true;
+
+        FInputModeGameAndUI InputMode;
+        InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
+        SetInputMode(InputMode);
+        SetIgnoreLookInput(true);
+
+        bIsInCursorMode = true;
+    }
+    else
+    {
+        bShowMouseCursor = false;
+        SetInputMode(FInputModeGameOnly());
+        SetIgnoreLookInput(false);
+
+        bIsInCursorMode = false;
+    }
 }
 
 void ASKPlayerController::AbilityInputTagPressed(FGameplayTag InputTag)

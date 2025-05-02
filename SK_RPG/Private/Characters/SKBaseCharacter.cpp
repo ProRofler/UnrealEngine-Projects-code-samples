@@ -159,7 +159,7 @@ void ASKBaseCharacter::HandleMainAttributeChange(const FSKAttributeChangeData Ch
 void ASKBaseCharacter::HandleDeath()
 {
 
-    // TODO: convert to ability
+    OnCharacterDeath.Broadcast();
 
     GetCharacterMovement()->DisableMovement();
     GetCharacterMovement()->Deactivate();

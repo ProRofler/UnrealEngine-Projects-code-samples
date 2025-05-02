@@ -14,9 +14,7 @@ ASKPlayerHUD *USKUserWidgetBase::GetSKPlayerHud()
 {
     if (const auto PC = GetOwningPlayer())
     {
-        const auto HUD = Cast<ASKPlayerHUD>(PC->GetHUD());
-
-        return HUD ? HUD : nullptr;
+        return Cast<ASKPlayerHUD>(PC->GetHUD());
     }
 
     return nullptr;

@@ -14,8 +14,11 @@ class SIRKNIGHT_API USKCharacterAnimationsDataAsset : public UDataAsset
 
   public:
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon animations")
-    UAnimMontage *UnsheatheAnimMontage = nullptr;
+    UAnimMontage *SheatheUnsheatheAnimMontage = nullptr;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Weapon animations")
-    UAnimMontage *SheatheAnimMontage = nullptr;
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat animations")
+    UAnimMontage *AttackComboAnimMontage = nullptr;
+
+    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Combat animations")
+    UAnimMontage *BlockingAnimMontage = nullptr;
 };

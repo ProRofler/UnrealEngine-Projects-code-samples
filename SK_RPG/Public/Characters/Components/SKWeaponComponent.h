@@ -25,10 +25,17 @@ class SIRKNIGHT_API USKWeaponComponent : public USKCharacterComponentBase
     UFUNCTION(BlueprintCallable, Category = "SK Weapon Component")
     void DestroyWeapon();
 
+    UFUNCTION(BlueprintCallable, Category = "SK Weapon Component")
+    void SetIsTracingSword(bool Value);
+
   protected:
     virtual void BeginPlay() override;
+    virtual void TickComponent(float DeltaTime, enum ELevelTick TickType,
+                               FActorComponentTickFunction *ThisTickFunction) override;
 
   private:
     UPROPERTY()
     TObjectPtr<ASKEquippableBase> EquippedWeapon = nullptr;
+
+    bool bIsTracingSword = false;
 };

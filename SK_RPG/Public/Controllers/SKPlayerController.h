@@ -22,16 +22,16 @@ class SIRKNIGHT_API ASKPlayerController : public APlayerController
   public:
     virtual void BeginPlay() override;
 
-    void ToggleInventoryHUD();
-
     UFUNCTION(BlueprintCallable, Category = "SK Getters")
     ASKPlayerHUD *GetPlayerHUD() { return PlayerHUD.Get(); }
 
-  protected:
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input")
-    FEnhancedInputData InputData;
+    UFUNCTION(BlueprintCallable, Category = "SK HUD")
+    void ToggleCursor();
 
-    UPROPERTY(EditDefaultsOnly, Category = "Input")
+  protected:
+    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input") FEnhancedInputData InputData;
+
+    UPROPERTY(EditDefaultsOnly, Category = "SK Input")
     TObjectPtr<USKAbilityInputConfigDataAsset> InputConfig;
 
     virtual void OnPossess(APawn *aPawn) override;
@@ -40,6 +40,8 @@ class SIRKNIGHT_API ASKPlayerController : public APlayerController
     TWeakObjectPtr<ASKPlayerHUD> PlayerHUD;
     TWeakObjectPtr<ASKPlayerCharacter> SKPlayerCharacter;
     TWeakObjectPtr<USKAbilitySystemComponent> SKAbilitySystemComponent;
+
+    bool bIsInCursorMode = false;
 
     void ControllerSetup();
     void InitializeComponents();

@@ -37,6 +37,9 @@ void USKPhysicsHandleComponent::GrabItem(UPrimitiveComponent *ComponentToGrab)
 
 void USKPhysicsHandleComponent::UpdateGrabLocation()
 {
+#if !UE_BUILD_SHIPPING
+    TRACE_CPUPROFILER_EVENT_SCOPE_STR("USKPhysicsHandleComponent::UpdateGrabLocation");
+#endif
     const auto grabbingTag = FSKGameplayTags::Get().Character_State_Action_GrabbingItem;
     const auto rotatingTag = FSKGameplayTags::Get().Character_State_Action_RotatingItem;
 

@@ -1,9 +1,14 @@
 // Copyright (c) 2024. Sir Knight title is a property of Quantinum ltd. All rights reserved.
 
 #include "Characters/Components/SKInventoryComponent.h"
+
+#include "AbilitySystemBlueprintLibrary.h"
+
 #include "Characters/SKBaseCharacter.h"
+
 #include "Core/Interface/SKInterfaceInteractable.h"
 
+#include "Gameplay/GAS/SKNativeGameplayTags.h"
 #include "Gameplay/Interactables/SKCollectible.h"
 #include "Gameplay/Interactables/SKKeyItem.h"
 
@@ -30,6 +35,8 @@ void USKInventoryComponent::HandleUseItem(USKInventoryObjectData *ObjectData)
 
 void USKInventoryComponent::EquipWeapon(USKInventoryObjectData *ObjectData)
 {
+    // TODO: checker function for slot assignment?
+    FGameplayEventData payloadTemp;
 
     if (ObjectData == GetMainWeaponSlot())
     {
@@ -43,11 +50,17 @@ void USKInventoryComponent::EquipWeapon(USKInventoryObjectData *ObjectData)
         }
 
         SetMainWeaponSlot(nullptr);
+
+        UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+            GetSKOwnerCharacter(), FSKGameplayTags::Get().Event_Combat_SwitchWeapon, payloadTemp);
     }
     else
     {
         if (GetMainWeaponSlot())
         {
+            UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(
+                GetSKOwnerCharacter(), FSKGameplayTags::Get().Event_Combat_SwitchWeapon, payloadTemp);
+
             if (auto item = FindByClass(GetMainWeaponSlot()->GetItemClass()))
             {
                 item->ChangeItemQuantity(GetMainWeaponSlot()->GetItemQuantity());
@@ -73,6 +86,7 @@ void USKInventoryComponent::AddToInventory(AActor *PickedItem)
     if (!PickedItem) return;
 
     auto itemData = CreateInventoryObjectDataItem(PickedItem);
+
     if (!itemData)
     {
         UE_LOGFMT(LogSKInteractions, Error, "Actor: {0} failed to generate inventory item: \"{1}\", of class: {2}",

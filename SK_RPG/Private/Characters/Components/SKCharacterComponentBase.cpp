@@ -7,7 +7,7 @@
 #include "Core/SKLogCategories.h"
 #include "Logging/StructuredLog.h"
 
-USKCharacterComponentBase::USKCharacterComponentBase() { PrimaryComponentTick.bCanEverTick = false; }
+USKCharacterComponentBase::USKCharacterComponentBase() { PrimaryComponentTick.bCanEverTick = true; }
 
 // Called when the game starts
 void USKCharacterComponentBase::BeginPlay()

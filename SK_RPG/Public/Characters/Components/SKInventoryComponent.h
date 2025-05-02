@@ -84,7 +84,7 @@ class SIRKNIGHT_API USKInventoryComponent : public USKCharacterComponentBase
 
   private:
     UPROPERTY()
-    TArray<USKInventoryObjectData *> InventoryData; // Main inventory data
+    TArray<USKInventoryObjectData *> InventoryData;
 
     UPROPERTY()
     TObjectPtr<USKInventoryObjectData> MainWeaponSlot = nullptr;

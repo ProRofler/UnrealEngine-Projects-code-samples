@@ -19,6 +19,6 @@ class SIRKNIGHT_API ASKEquippableBase : public AActor
   protected:
     virtual void BeginPlay() override;
 
-    UPROPERTY(VisibleDefaultsOnly, Category = "SK Weapon Settings")
-    TObjectPtr<UStaticMeshComponent> BaseMesh;
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "SK Weapon Settings")
+    UStaticMeshComponent *BaseMesh;
 };
