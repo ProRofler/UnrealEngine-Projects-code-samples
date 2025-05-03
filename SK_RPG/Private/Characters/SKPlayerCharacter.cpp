@@ -4,6 +4,7 @@
 
 #include "Camera/CameraComponent.h"
 
+#include "Characters/Components/SKInteractionComponent.h"
 #include "Characters/Components/SKInventoryComponent.h"
 #include "Characters/Components/SKPhysicsHandleComponent.h"
 
@@ -148,11 +149,11 @@ void ASKPlayerCharacter::PrintDebugInfo()
     } */
 
     // Show if can interact in the moment
-    if (InteractionTarget.IsValid())
+    /* if (InteractionTarget.IsValid())
     {
         GEngine->AddOnScreenDebugMessage(2, 0.0f, FColor::Emerald, "I'm looking at: " + InteractionTarget->GetName(),
                                          true);
-    }
+    }*/
 
     // Draw XY arrows for physics handle debug
     /*
@@ -248,50 +249,6 @@ void ASKPlayerCharacter::PrintDebugInfo()
 
 /********************* INTERACTIONS *********************/
 
-void ASKPlayerCharacter::HandleInteractionActor()
-{
-    const auto tagCanInteract = FSKGameplayTags::Get().Character_State_Action_CanInteract;
-
-    // No calculation if currently grabbing item
-    if (AbilitySystemComponent->HasMatchingGameplayTag(FSKGameplayTags::Get().Character_State_Action_GrabbingItem))
-    {
-        AbilitySystemComponent->CheckAndRemoveGameplayTag(tagCanInteract);
-        InteractionTarget = nullptr; // Explicitly clearing interaction target
-        return;
-    }
-
-    InteractionTarget = GetLookedAtActor();
-
-    if (!InteractionTarget.IsValid())
-    {
-        AbilitySystemComponent->CheckAndRemoveGameplayTag(tagCanInteract);
-        return;
-    }
-
-    // final check with trace
-    FHitResult TraceCheck = TraceToBoundingBox(InteractionTarget.Get());
-
-    if (!TraceCheck.bBlockingHit)
-    {
-        if (!TraceFromCamera(TraceCheck, GrabDistance))
-        {
-            InteractionTarget = nullptr;
-            return;
-        }
-    }
-
-    // final comparison
-    if (TraceCheck.GetActor() == InteractionTarget || TraceCheck.GetActor()->Implements<USKInterfaceInteractable>())
-    {
-        InteractionTarget = TraceCheck.GetActor();
-        AbilitySystemComponent->CheckAndAddGameplayTag(tagCanInteract);
-    }
-    else
-    {
-        InteractionTarget = nullptr;
-    }
-}
-
 void ASKPlayerCharacter::DropItem(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop)
 {
     if (!ItemToRemove) return;
@@ -329,9 +286,9 @@ void ASKPlayerCharacter::DropItem(USKInventoryObjectData *ItemToRemove, const in
 
 bool ASKPlayerCharacter::CanGrabItem()
 {
-    if (!InteractionTarget.IsValid()) return false;
+    if (!InteractionComponent->GetInteractionTarget()) return false;
 
-    return InteractionTarget->GetRootComponent()->IsSimulatingPhysics();
+    return InteractionComponent->GetInteractionTarget()->GetRootComponent()->IsSimulatingPhysics();
 }
 
 void ASKPlayerCharacter::HandleGrabbing()
@@ -342,7 +299,7 @@ void ASKPlayerCharacter::HandleGrabbing()
     if (CanGrabItem())
     {
         AbilitySystemComponent->CheckAndAddGameplayTag(tagGrabbingItem);
-        PhysicsHandle->GrabItem(InteractionTarget->GetComponentByClass<UMeshComponent>());
+        PhysicsHandle->GrabItem(InteractionComponent->GetInteractionTarget()->GetComponentByClass<UMeshComponent>());
     }
     else if (!CanGrabItem() && PhysicsHandle->GetGrabbedComponent())
     {
@@ -374,50 +331,6 @@ void ASKPlayerCharacter::HandleAlternativeAction()
 
 /********************* UTILS *********************/
 
-AActor *ASKPlayerCharacter::GetLookedAtActor() const
-{
-#if !UE_BUILD_SHIPPING
-    TRACE_CPUPROFILER_EVENT_SCOPE_STR("ASKPlayerCharacter::GetLookedAtActor");
-#endif
-
-    double BestDotProduct = -1.0f;
-    double Threshold = 0.0f;
-    AActor *Item = nullptr;
-
-    FRWScopeLock ReadLock(DataGuard, SLT_ReadOnly);
-
-    for (const auto &ItemInVicinity : InteractablesInVicinity)
-    {
-        // get actor bounds
-        FVector ActorBoundsOrigin, ActorBoxExtent;
-        ItemInVicinity->GetActorBounds(false, ActorBoundsOrigin, ActorBoxExtent);
-
-        // calcuate dot product
-        const auto DotProduct = FVector::DotProduct(
-            PlayerCamera->GetForwardVector(),
-            UKismetMathLibrary::GetDirectionUnitVector(PlayerCamera->GetComponentLocation(), ActorBoundsOrigin));
-
-        if (DotProduct >= BestDotProduct)
-            BestDotProduct = DotProduct;
-        else
-            continue;
-
-        // dot product threshold variables
-        // magic numbers here were manually assigned for adjusting to an item mesh
-        const auto distanceSqr = FVector::DistSquared(PlayerCamera->GetComponentLocation(), ActorBoundsOrigin);
-
-        const auto clampedDistance = FMath::Clamp(distanceSqr * 0.000002f + 0.95f, 0.0f, 0.99f);
-        const auto boundsDelta = (ActorBoxExtent.GetAbsMax() * 0.002f);
-
-        // Minimally required dot product value to be considered as if player looking at item
-        Threshold = clampedDistance - boundsDelta;
-
-        Item = ItemInVicinity;
-    }
-
-    return BestDotProduct < Threshold ? nullptr : Item;
-}
-
 FHitResult ASKPlayerCharacter::TraceToActor(const AActor *OtherActor) const
 {
 
@@ -425,20 +338,6 @@ FHitResult ASKPlayerCharacter::TraceToActor(const AActor *OtherActor) const
 
     GetWorld()->LineTraceSingleByChannel(HitResult, PlayerCamera->GetComponentLocation(),
                                          OtherActor->GetActorLocation(), ECollisionChannel::ECC_Visibility);
-
-    return HitResult;
-}
-
-FHitResult ASKPlayerCharacter::TraceToBoundingBox(const AActor *OtherActor) const
-{
-    FHitResult HitResult;
-
-    const auto tracePoint = OtherActor->GetComponentsBoundingBox().GetCenter();
-
-    // DrawDebugSphere(GetWorld(), tracePoint, 4.0f, 8, FColor::Red, false, 0.1f);
-
-    GetWorld()->LineTraceSingleByChannel(HitResult, PlayerCamera->GetComponentLocation(), tracePoint,
-                                         ECollisionChannel::ECC_Visibility);
 
     return HitResult;
 }

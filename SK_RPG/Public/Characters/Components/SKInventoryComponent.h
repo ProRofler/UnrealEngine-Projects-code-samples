@@ -27,6 +27,9 @@ class SIRKNIGHT_API USKInventoryComponent : public USKCharacterComponentBase
   public:
     USKInventoryComponent();
 
+  protected:
+    virtual void BeginPlay() override;
+
     //
     /********************* Getters *********************/
   public:
@@ -72,6 +75,8 @@ class SIRKNIGHT_API USKInventoryComponent : public USKCharacterComponentBase
     void SortInventory();
 
     void SetMainWeaponSlot(USKInventoryObjectData *ObjectData) { MainWeaponSlot = ObjectData; }
+    
+    void AddToInventoryFromDataTable(const UDataTable *DT);
 
     //
     /********************* Members *********************/

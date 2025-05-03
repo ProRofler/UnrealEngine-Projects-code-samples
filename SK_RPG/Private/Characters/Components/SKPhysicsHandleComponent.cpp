@@ -1,9 +1,12 @@
 // Copyright (c) 2024. Sir Knight title is a property of Quantinum ltd. All rights reserved.
 
 #include "Characters/Components/SKPhysicsHandleComponent.h"
+
 #include "AbilitySystemComponent.h"
 #include "Camera/CameraComponent.h"
+#include "Characters/Components/SKInteractionComponent.h"
 #include "Characters/SKPlayerCharacter.h"
+#include "Core/Interface/SKInterfaceCharacter.h"
 #include "Gameplay/GAS/SKNativeGameplayTags.h"
 
 void USKPhysicsHandleComponent::BeginPlay()
@@ -50,7 +53,9 @@ void USKPhysicsHandleComponent::UpdateGrabLocation()
             FVector GrabLocation;
             FHitResult HitResult_loc;
 
-            if (Player->TraceFromCamera(HitResult_loc, Player->GrabDistance, GrabbedComponent))
+            if (Player->TraceFromCamera(
+                    HitResult_loc, ISKInterfaceCharacter::Execute_GetInteractionComponent(GetOwner())->GrabDistance,
+                    GrabbedComponent))
                 GrabLocation = HitResult_loc.ImpactPoint;
             else
                 GrabLocation = HitResult_loc.TraceEnd;

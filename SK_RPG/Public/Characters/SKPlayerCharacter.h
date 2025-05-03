@@ -23,6 +23,7 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
     friend USKPhysicsHandleComponent;
     friend ASKPlayerController;
     friend USKListViewWidget;
+    friend USKInteractionComponent;
 
     ASKPlayerCharacter(const FObjectInitializer &ObjectInitializer);
 
@@ -38,11 +39,9 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
     bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance);
 
   private:
-    AActor *GetLookedAtActor() const;
     bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance,
                          const UPrimitiveComponent *ComponentToIgnore);
     FHitResult TraceToActor(const AActor *OtherActor) const;
-    FHitResult TraceToBoundingBox(const AActor *OtherActor) const;
 
     /************************************ Player specific ******************************************/
   protected:
@@ -68,12 +67,8 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
 
     bool bIsLookIdle = false;
     /************************************ Interactions ******************************************/
-  protected:
-    UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "SK Interactions settings")
-    float GrabDistance = 150.0f;
 
     void HandleAlternativeAction();
-    virtual void HandleInteractionActor() override;
     void DropItem(USKInventoryObjectData *ItemToRemove, const int32 QuantityToDrop);
 
     UFUNCTION(BlueprintCallable, Category = "SK Grabbing")

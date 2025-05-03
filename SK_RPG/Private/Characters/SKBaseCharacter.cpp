@@ -1,20 +1,19 @@
 // Copyright (c) 2024. Sir Knight title is a property of Quantinum ltd. All rights reserved.
 
 #include "Characters/SKBaseCharacter.h"
+
 #include "AbilitySystemBlueprintLibrary.h"
 #include "GameplayEffect.h"
 
 #include "Async/Async.h"
 
 #include "Characters/Components/SKCharacterMovementComponent.h"
+#include "Characters/Components/SKInteractionComponent.h"
 #include "Characters/Components/SKInventoryComponent.h"
 #include "Characters/Components/SKStateMachineComponent.h"
 #include "Characters/Components/SKWeaponComponent.h"
 
 #include "Components/CapsuleComponent.h"
-
-#include "Core/Interface/SKInterfaceCollectible.h"
-#include "Core/Interface/SKInterfaceInteractable.h"
 
 #include "Core/SKLogCategories.h"
 #include "Logging/StructuredLog.h"
@@ -33,21 +32,12 @@ ASKBaseCharacter::ASKBaseCharacter(const FObjectInitializer &ObjectInitializer)
 {
     PrimaryActorTick.bCanEverTick = true;
 
-    // Interactions system
-    InteractionZone = CreateDefaultSubobject<UCapsuleComponent>("Interactive zone");
-    InteractionZone->SetCapsuleHalfHeight(130.0f);
-    InteractionZone->SetCapsuleRadius(100.0f);
-    InteractionZone->SetupAttachment(GetRootComponent());
-    InteractionZone->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-    InteractionZone->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Overlap);
-    InteractionZone->SetGenerateOverlapEvents(true);
-    InteractionZone->OnComponentBeginOverlap.AddDynamic(this, &ASKBaseCharacter::OnBeginOverlap);
-    InteractionZone->OnComponentEndOverlap.AddDynamic(this, &ASKBaseCharacter::OnOverlapEnd);
-
     // Components
     MovementComponent = Cast<USKCharacterMovementComponent>(GetCharacterMovement());
     InventoryComponent = CreateDefaultSubobject<USKInventoryComponent>("Inventory component");
     WeaponComponent = CreateDefaultSubobject<USKWeaponComponent>("Weapon component");
+    InteractionComponent = CreateDefaultSubobject<USKInteractionComponent>("Interaction component");
+    InteractionComponent->GetInteractionZone()->SetupAttachment(GetRootComponent());
 
     // GAS
     AbilitySystemComponent = CreateDefaultSubobject<USKAbilitySystemComponent>("Ability system component");
@@ -59,7 +49,7 @@ void ASKBaseCharacter::BeginPlay()
 {
     Super::BeginPlay();
 
-    check(InteractionZone);
+    check(InteractionComponent);
     check(MovementComponent);
     check(AbilitySystemComponent);
     check(BasicGameplayEffects)
@@ -86,35 +76,6 @@ void ASKBaseCharacter::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
     HandleIdling();
-}
-
-void ASKBaseCharacter::OnBeginOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor,
-                                      UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep,
-                                      const FHitResult &SweepResult)
-{
-    if (OtherActor->Implements<USKInterfaceInteractable>())
-    {
-        if (DataGuard.TryWriteLock())
-        {
-            InteractablesInVicinity.Add(OtherActor);
-            DataGuard.WriteUnlock();
-        }
-        HandleInteractionsTimer();
-    }
-}
-
-void ASKBaseCharacter::OnOverlapEnd(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor,
-                                    UPrimitiveComponent *OtherComp, int32 OtherBodyIndex)
-{
-    if (InteractablesInVicinity.Contains(OtherActor))
-    {
-        if (DataGuard.TryWriteLock())
-        {
-            InteractablesInVicinity.Remove(OtherActor);
-            DataGuard.WriteUnlock();
-        }
-        InteractionTarget = nullptr;
-    }
 }
 
 /************************************ Attributes ******************************************/
@@ -383,53 +344,4 @@ void ASKBaseCharacter::StopIdle()
         auto sprintingTagContainer = sprintingTag.GetSingleTagContainer();
         AbilitySystemComponent->CancelAbilities(&sprintingTagContainer);
     }
-}
-
-void ASKBaseCharacter::Interact()
-{
-    if (!InteractionTarget.IsValid()) return;
-
-    if (bEnableLogging && bEnableLoggingAbilitySystem)
-        UE_LOGFMT(LogSKAbilitySystem, Display, "'{ActorName}' tried to interact with '{InteractableName}'!",
-                  ("ActorName", this->GetName()), ("InteractableName", InteractionTarget->GetName()));
-
-    if (InteractionTarget->Implements<USKInterfaceCollectible>())
-    {
-        InventoryComponent->AddToInventory(InteractionTarget.Get());
-    }
-
-    ISKInterfaceInteractable::Execute_OnInteraction(InteractionTarget.Get(), this);
-}
-
-//************************** MULTITHREADING **************************
-void ASKBaseCharacter::AsyncInteractionHandle()
-{
-    Async(EAsyncExecution::TaskGraph, [&]() { HandleInteractionActor(); });
-}
-
-//************************** INTERACTIONS **************************
-void ASKBaseCharacter::HandleInteractionsTimer()
-{
-    if (!GetWorld()) return;
-
-    if (InteractablesInVicinity.Num() > 0 && GetWorldTimerManager().IsTimerActive(InteractableActiveUpdateTimer))
-    {
-        return;
-    }
-
-    else if (InteractablesInVicinity.Num() > 0)
-    {
-        GetWorldTimerManager().SetTimer(InteractableActiveUpdateTimer, this, &ASKBaseCharacter::AsyncInteractionHandle,
-                                        0.1, true);
-    }
-
-    else
-    {
-        GetWorldTimerManager().ClearTimer(InteractableActiveUpdateTimer);
-    }
-}
-
-void ASKBaseCharacter::HandleInteractionActor()
-{
-    // Not supposed to be called for now
 }

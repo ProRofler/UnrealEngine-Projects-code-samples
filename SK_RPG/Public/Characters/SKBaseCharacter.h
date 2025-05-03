@@ -20,16 +20,18 @@
 class USKCharacterMovementComponent;
 class USKInventoryComponent;
 class USKWeaponComponent;
+class USKInteractionComponent;
+class UPhysicsHandleComponent;
+class UAbilitySystemComponent;
+
 class USKAttributeSet;
 class USKAttributeSetSkills;
 class USKAbilitySystemComponent;
+
 class USKInventoryObjectData;
 
 class ASKInteractableBase;
 
-class UCapsuleComponent;
-class UPhysicsHandleComponent;
-class UAbilitySystemComponent;
 class UAttributeSet;
 class UGameplayAbility;
 
@@ -55,14 +57,6 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
   protected:
     virtual void BeginPlay() override;
 
-  private:
-    UFUNCTION()
-    void OnBeginOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp,
-                        int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult);
-
-    UFUNCTION()
-    void OnOverlapEnd(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp,
-                      int32 OtherBodyIndex);
     /************************************ Attributes ******************************************/
   public:
     UFUNCTION(BlueprintPure)
@@ -121,35 +115,15 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     void StartIdle();
     void StopIdle();
 
-    /************************************ Interactions  ******************************************/
-  public:
-    UFUNCTION(BlueprintCallable, Category = "SK Character|Interactions")
-    const AActor *GetInteractionTarget() const { return InteractionTarget.Get(); }
-
-    UFUNCTION(BlueprintCallable, Category = "SK Character|Interactions")
-    virtual void Interact();
-
-  protected:
-    UPROPERTY(BlueprintReadWrite)
-    TObjectPtr<UCapsuleComponent> InteractionZone;
-
-    TSet<AActor *> InteractablesInVicinity;
-    TWeakObjectPtr<AActor> InteractionTarget;
-
-    void HandleInteractionsTimer();
-    virtual void HandleInteractionActor();
-
-    /************************************ MULTITHREADING  ******************************************/
-  protected:
-    mutable FRWLock DataGuard;
-
-    void AsyncInteractionHandle();
-
     /************************************ COMPONENTS  ******************************************/
   public:
     USKInventoryComponent *GetInventoryComponent_Implementation() const { return InventoryComponent.Get(); }
     USKWeaponComponent *GetWeaponComponent_Implementation() const { return WeaponComponent.Get(); }
+    USKInteractionComponent *GetInteractionComponent_Implementation() const { return InteractionComponent.Get(); }
     virtual UAbilitySystemComponent *GetAbilitySystemComponent() const override;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Character|Inventory")
+    TObjectPtr<UDataTable> StartingInventoryData;
 
   protected:
     TObjectPtr<USKCharacterMovementComponent> MovementComponent;
@@ -160,14 +134,12 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     UPROPERTY(VisibleAnywhere, Category = "SK Character|Weapon")
     TObjectPtr<USKWeaponComponent> WeaponComponent;
 
+    TObjectPtr<USKInteractionComponent> InteractionComponent;
+
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SK Character|GAS", meta = (AllowPrivateAccess = "true"))
     TObjectPtr<USKAbilitySystemComponent> AbilitySystemComponent;
     TObjectPtr<const USKAttributeSet> AttributeSet;
     TObjectPtr<const USKAttributeSetSkills> AttributeSetSkills;
-
-    /************************************ Timers ******************************************/
-  private:
-    FTimerHandle InteractableActiveUpdateTimer;
 
     /************************************ Data assets  ******************************************/
   public:

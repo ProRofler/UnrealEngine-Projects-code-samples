@@ -12,11 +12,23 @@
 #include "Gameplay/Interactables/SKCollectible.h"
 #include "Gameplay/Interactables/SKKeyItem.h"
 
+#include "Utils/DataTables/SKInventoryDataTable.h"
+
 #include "Core/SKLogCategories.h"
 #include "Logging/StructuredLog.h"
 
 /********************* DEFAULT *********************/
 USKInventoryComponent::USKInventoryComponent() { PrimaryComponentTick.bCanEverTick = false; }
+
+void USKInventoryComponent::BeginPlay()
+{
+    Super::BeginPlay();
+
+    if (const auto InventoryDT = GetSKOwnerCharacter()->StartingInventoryData)
+    {
+        AddToInventoryFromDataTable(InventoryDT);
+    }
+}
 
 //
 /********************* Equip handling *********************/
@@ -196,6 +208,24 @@ void USKInventoryComponent::SortInventory()
             return A != nullptr;
         }
     });
+}
+
+void USKInventoryComponent::AddToInventoryFromDataTable(const UDataTable *DT)
+{
+    const FString ContextString(TEXT("StartupInventory"));
+
+    TArray<FSKInventoryDataTable *> AllRow;
+    DT->GetAllRows<FSKInventoryDataTable>(ContextString, AllRow);
+
+    for (auto *Row : AllRow)
+    {
+        if (Row)
+        {
+            auto item = NewObject<AActor>(GetOwner(), Row->ItemClass);
+            AddToInventory(item);
+            item->Destroy();
+        }
+    }
 }
 
 USKInventoryObjectData *USKInventoryComponent::CreateInventoryObjectDataItem(const AActor *Item)
