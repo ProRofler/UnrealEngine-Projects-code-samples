@@ -8,11 +8,7 @@
 
 ASKInteractableBase::ASKInteractableBase()
 {
-#if !UE_BUILD_SHIPPING
-    PrimaryActorTick.bCanEverTick = true;
-#elif
     PrimaryActorTick.bCanEverTick = false;
-#endif
 
     BaseMesh = CreateDefaultSubobject<UStaticMeshComponent>("Object mesh");
     SetRootComponent(BaseMesh);
@@ -23,12 +19,7 @@ ASKInteractableBase::ASKInteractableBase()
     InteractableID = FGuid::NewGuid();
 }
 
-void ASKInteractableBase::BeginPlay()
-{
-    Super::BeginPlay();
-
-    // check and set unique ID
-}
+void ASKInteractableBase::BeginPlay() { Super::BeginPlay(); }
 
 #if !UE_BUILD_SHIPPING
 void ASKInteractableBase::Tick(float DeltaSeconds)

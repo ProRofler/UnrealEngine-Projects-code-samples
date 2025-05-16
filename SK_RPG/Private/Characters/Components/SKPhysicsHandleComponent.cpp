@@ -53,9 +53,15 @@ void USKPhysicsHandleComponent::UpdateGrabLocation()
             FVector GrabLocation;
             FHitResult HitResult_loc;
 
-            if (Player->TraceFromCamera(
-                    HitResult_loc, ISKInterfaceCharacter::Execute_GetInteractionComponent(GetOwner())->GrabDistance,
-                    GrabbedComponent))
+            // TODO: interaction component might return null : GC kills it
+            const auto interactionComponent = ISKInterfaceCharacter::Execute_GetInteractionComponent(Player);
+            if (!interactionComponent) continue;
+
+            if (Player->TraceFromCamera(HitResult_loc,                      //
+                                        interactionComponent->GrabDistance, //
+                                        GrabbedComponent                    //
+                                        ))
+
                 GrabLocation = HitResult_loc.ImpactPoint;
             else
                 GrabLocation = HitResult_loc.TraceEnd;

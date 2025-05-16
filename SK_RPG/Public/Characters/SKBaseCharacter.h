@@ -123,7 +123,7 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     virtual UAbilitySystemComponent *GetAbilitySystemComponent() const override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Character|Inventory")
-    TObjectPtr<UDataTable> StartingInventoryData;
+    TSoftObjectPtr<UDataTable> StartingInventoryData;
 
   protected:
     TObjectPtr<USKCharacterMovementComponent> MovementComponent;
@@ -134,6 +134,7 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     UPROPERTY(VisibleAnywhere, Category = "SK Character|Weapon")
     TObjectPtr<USKWeaponComponent> WeaponComponent;
 
+    UPROPERTY()
     TObjectPtr<USKInteractionComponent> InteractionComponent;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SK Character|GAS", meta = (AllowPrivateAccess = "true"))
@@ -147,10 +148,10 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     USKCharacterAnimationsDataAsset *AnimationsDA = nullptr;
 
     UPROPERTY(EditAnywhere, Category = "SK Ability System|Data Assets")
-    TObjectPtr<USKAbilitiesDataAsset> GrantedAbilitiesDataAsset;
+    TSoftObjectPtr<USKAbilitiesDataAsset> GrantedAbilitiesDataAsset;
 
     UPROPERTY(EditAnywhere, Category = "SK Ability System|Data Assets")
-    TObjectPtr<USKBasicGameplayEffectsDataAsset> BasicGameplayEffects;
+    TSoftObjectPtr<USKBasicGameplayEffectsDataAsset> BasicGameplayEffects;
 
     /************************************ DEBUGGING  ******************************************/
   public:

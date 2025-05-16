@@ -45,12 +45,10 @@ void USKInteractionComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    // InteractionZone->AttachToComponent(GetOwner()->GetRootComponent(),
-    //                                    FAttachmentTransformRules::SnapToTargetNotIncludingScale);
-
     // Check vicinity on start
     TArray<AActor *> OverlappingActors;
     InteractionZone->GetOverlappingActors(OverlappingActors);
+
     for (const auto OverlappedActor : OverlappingActors)
     {
         if (OverlappedActor->Implements<USKInterfaceInteractable>())
@@ -59,9 +57,12 @@ void USKInteractionComponent::BeginPlay()
             {
                 InteractablesInVicinity.Add(OverlappedActor);
                 DataGuard.WriteUnlock();
-                HandleInteractionsTimer();
             }
         }
+    }
+    if (!InteractablesInVicinity.IsEmpty())
+    {
+        HandleInteractionsTimer();
     }
 }
 
@@ -76,6 +77,7 @@ void USKInteractionComponent::OnBeginOverlap(UPrimitiveComponent *OverlappedComp
             InteractablesInVicinity.Add(OtherActor);
             DataGuard.WriteUnlock();
         }
+
         HandleInteractionsTimer();
     }
 }
@@ -103,7 +105,9 @@ void USKInteractionComponent::Interact()
 {
     if (!InteractionTarget.IsValid()) return;
 
-    if (GetSKOwnerCharacter()->bEnableLogging && GetSKOwnerCharacter()->bEnableLoggingAbilitySystem)
+    const bool bLogEnabled =
+        GetSKOwnerCharacter()->bEnableLogging && GetSKOwnerCharacter()->bEnableLoggingAbilitySystem;
+    if (bLogEnabled)
         UE_LOGFMT(LogSKAbilitySystem, Display, "'{ActorName}' tried to interact with '{InteractableName}'!",
                   ("ActorName", GetOwner()->GetName()), ("InteractableName", InteractionTarget->GetName()));
 

@@ -4,6 +4,7 @@
 
 #include "Characters/Components/SKCharacterComponentBase.h"
 #include "CoreMinimal.h"
+
 #include "SKInteractionComponent.generated.h"
 
 class UCapsuleComponent;

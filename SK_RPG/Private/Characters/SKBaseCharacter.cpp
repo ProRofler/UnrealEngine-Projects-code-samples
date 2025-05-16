@@ -34,8 +34,11 @@ ASKBaseCharacter::ASKBaseCharacter(const FObjectInitializer &ObjectInitializer)
 
     // Components
     MovementComponent = Cast<USKCharacterMovementComponent>(GetCharacterMovement());
+
     InventoryComponent = CreateDefaultSubobject<USKInventoryComponent>("Inventory component");
+
     WeaponComponent = CreateDefaultSubobject<USKWeaponComponent>("Weapon component");
+
     InteractionComponent = CreateDefaultSubobject<USKInteractionComponent>("Interaction component");
     InteractionComponent->GetInteractionZone()->SetupAttachment(GetRootComponent());
 
@@ -87,8 +90,8 @@ float ASKBaseCharacter::GetHealthPercent() const { return AttributeSet->GetHealt
 void ASKBaseCharacter::HandleMainAttributeChange(const FSKAttributeChangeData ChangedAttributeInfo)
 {
     if (bEnableLogging && bEnableLoggingAbilitySystem)
-        UE_LOGFMT(LogSKAbilitySystem, Display, "{Actor} {Attribute} change call for {Amount}",
-                  ("Actor", GetOwner()->GetName()), ("Attribute", ChangedAttributeInfo.AttributeTag.ToString()),
+        UE_LOGFMT(LogSKAbilitySystem, Display, "{Actor} {Attribute} change call for {Amount}", ("Actor", GetName()),
+                  ("Attribute", ChangedAttributeInfo.AttributeTag.ToString()),
                   ("Amount", FString::SanitizeFloat(ChangedAttributeInfo.ChangedAmount)));
 
     FGameplayEventData payloadTemp; // temporary, don't know if I'm gonna use it in future
@@ -128,6 +131,8 @@ void ASKBaseCharacter::HandleDeath()
     GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
     GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
     GetMesh()->SetSimulatePhysics(true);
+    GetMesh()->SetLinearDamping(20.f);
+    GetMesh()->SetAngularDamping(20.f);
 }
 
 bool ASKBaseCharacter::IsStaminaFull() const
