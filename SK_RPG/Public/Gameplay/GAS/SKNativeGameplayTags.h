@@ -52,6 +52,8 @@ struct FSKGameplayTags
 
     FGameplayTag Event_Combat_SwitchWeapon;
     FGameplayTag Event_Combat_Hit;
+    FGameplayTag Event_Combat_WeaponTraceStart;
+    FGameplayTag Event_Combat_WeaponTraceEnd;
 
     FGameplayTag Effect_Data_FallDamage;
 

@@ -30,4 +30,7 @@ class SIRKNIGHT_API ISKInterfaceCharacter
 
     UFUNCTION(BlueprintNativeEvent, BlueprintCallable, Category = "SK Character interface")
     USKInteractionComponent *GetInteractionComponent() const;
+
+    UFUNCTION(BlueprintImplementableEvent, BlueprintCallable, Category = "SK Character interface")
+    void ToggleCombatPhysics();
 };

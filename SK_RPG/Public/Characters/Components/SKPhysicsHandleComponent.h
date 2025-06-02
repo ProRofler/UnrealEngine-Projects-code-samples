@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "PhysicsEngine/PhysicsHandleComponent.h"
+
 #include "SKPhysicsHandleComponent.generated.h"
 
 class ASKPlayerCharacter;
@@ -14,7 +15,6 @@ class SIRKNIGHT_API USKPhysicsHandleComponent : public UPhysicsHandleComponent
     GENERATED_BODY()
 
   public:
-
     void GrabItem(UPrimitiveComponent *ComponentToGrab);
     void ReleaseItem();
     void RotateGrabbedComponent(const FVector2D &Input);

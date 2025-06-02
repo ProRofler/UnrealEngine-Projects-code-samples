@@ -19,7 +19,7 @@ class SIRKNIGHT_API USKWeaponComponent : public USKCharacterComponentBase
     GENERATED_BODY()
 
   public:
-    UFUNCTION(BlueprintCallable, Category = "SK Weapon Component")
+    UFUNCTION(BlueprintCallable, Category = "AA SK Weapon Component")
     void SpawnWeapon(TSubclassOf<ASKEquippableBase> EquippableClass);
 
     UFUNCTION(BlueprintCallable, Category = "SK Weapon Component")
@@ -27,6 +27,12 @@ class SIRKNIGHT_API USKWeaponComponent : public USKCharacterComponentBase
 
     UFUNCTION(BlueprintCallable, Category = "SK Weapon Component")
     void SetIsTracingSword(bool Value);
+
+    UFUNCTION(BlueprintPure, Category = "SK Weapon Component")
+    ASKEquippableBase *GetEquippedWeapon() { return EquippedWeapon.Get(); }
+
+    UFUNCTION(BlueprintCallable, Category = "SK Weapon Component")
+    void TogglePhysics();
 
   protected:
     virtual void BeginPlay() override;
@@ -37,5 +43,6 @@ class SIRKNIGHT_API USKWeaponComponent : public USKCharacterComponentBase
     UPROPERTY()
     TObjectPtr<ASKEquippableBase> EquippedWeapon = nullptr;
 
+    bool bIsPhysicsActive = false;
     bool bIsTracingSword = false;
 };

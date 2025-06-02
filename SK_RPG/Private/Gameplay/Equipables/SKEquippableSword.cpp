@@ -81,7 +81,7 @@ bool ASKEquippableSword::SphereTrace(const FVector &TraceStart, const FVector &T
                                                    UEngineTypes::ConvertToTraceType(TraceChannel), //
                                                    true,                                           // Ignore self
                                                    TArray<AActor *>(),                             // IgnoredActors
-                                                   EDrawDebugTrace::ForDuration,                   // Duration
+                                                   EDrawDebugTrace::None,                          // Debug
                                                    HitResult,                                      //
                                                    true                                            // ignore complex
     );

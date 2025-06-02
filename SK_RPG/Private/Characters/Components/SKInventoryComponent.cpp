@@ -24,7 +24,7 @@ void USKInventoryComponent::BeginPlay()
 {
     Super::BeginPlay();
 
-    if (GetSKOwnerCharacter()->StartingInventoryData.LoadSynchronous())
+    if (GetSKOwnerCharacter()->StartingInventoryData)
     {
         AddToInventoryFromDataTable(GetSKOwnerCharacter()->StartingInventoryData.Get());
     }

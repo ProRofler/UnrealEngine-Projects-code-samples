@@ -53,8 +53,7 @@ void USKWeaponComponent::SpawnWeapon(TSubclassOf<ASKEquippableBase> EquippableCl
     EquippedWeapon->SetActorEnableCollision(false);
 
     EquippedWeapon->AttachToComponent(GetSKOwnerCharacter()->GetMesh(),
-                                      FAttachmentTransformRules::SnapToTargetNotIncludingScale,
-                                      "RightHandWeaponSocket");
+                                      FAttachmentTransformRules::SnapToTargetNotIncludingScale, "GripPoint");
 
     EquippedWeapon->FinishSpawning(GetOwner()->GetActorTransform());
 }
@@ -77,5 +76,32 @@ void USKWeaponComponent::SetIsTracingSword(bool Value)
         bIsTracingSword = false;
         Cast<ASKEquippableSword>(EquippedWeapon)->ResetTraceStartEnd();
         break;
+    }
+}
+
+void USKWeaponComponent::TogglePhysics()
+{
+
+    const auto weaponMeshComponent = EquippedWeapon->FindComponentByClass<UStaticMeshComponent>();
+    if (!weaponMeshComponent) return;
+
+    bIsPhysicsActive = !bIsPhysicsActive;
+    EquippedWeapon->SetActorEnableCollision(bIsPhysicsActive);
+    weaponMeshComponent->SetSimulatePhysics(bIsPhysicsActive);
+
+    if (bIsPhysicsActive)
+    {
+        weaponMeshComponent->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
+        weaponMeshComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);
+        weaponMeshComponent->SetCollisionObjectType(ECC_WorldDynamic);
+    }
+    else
+    {
+        weaponMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+        weaponMeshComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+        weaponMeshComponent->SetCollisionObjectType(ECC_Visibility);
+
+        EquippedWeapon->AttachToComponent(GetSKOwnerCharacter()->GetMesh(),
+                                          FAttachmentTransformRules::SnapToTargetNotIncludingScale, "GripPoint");
     }
 }

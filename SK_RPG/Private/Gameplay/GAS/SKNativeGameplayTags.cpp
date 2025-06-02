@@ -112,6 +112,10 @@ void FSKGameplayTags::InitializeNativeGameplayTags()
     GameplayTags.Event_Combat_SwitchWeapon =
         UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Combat.SwitchWeapon"));
 
+    GameplayTags.Event_Combat_WeaponTraceStart =
+        UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Combat.WeaponTraceStart"));
+    GameplayTags.Event_Combat_WeaponTraceEnd =
+        UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Combat.WeaponTraceEnd"));
     GameplayTags.Event_Combat_Hit = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Combat.Hit"));
 
     /*

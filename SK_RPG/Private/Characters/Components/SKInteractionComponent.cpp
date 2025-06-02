@@ -39,11 +39,15 @@ USKInteractionComponent::USKInteractionComponent()
     InteractionZone->SetGenerateOverlapEvents(true);
     InteractionZone->OnComponentBeginOverlap.AddDynamic(this, &USKInteractionComponent::OnBeginOverlap);
     InteractionZone->OnComponentEndOverlap.AddDynamic(this, &USKInteractionComponent::OnOverlapEnd);
+
+    OnVicinityChanged.BindUObject(this, &USKInteractionComponent::HandleVicinityChanged);
 }
 
 void USKInteractionComponent::BeginPlay()
 {
     Super::BeginPlay();
+
+    check(OnVicinityChanged.IsBound());
 
     // Check vicinity on start
     TArray<AActor *> OverlappingActors;
@@ -62,7 +66,7 @@ void USKInteractionComponent::BeginPlay()
     }
     if (!InteractablesInVicinity.IsEmpty())
     {
-        HandleInteractionsTimer();
+        OnVicinityChanged.Execute();
     }
 }
 
@@ -76,9 +80,8 @@ void USKInteractionComponent::OnBeginOverlap(UPrimitiveComponent *OverlappedComp
         {
             InteractablesInVicinity.Add(OtherActor);
             DataGuard.WriteUnlock();
+            OnVicinityChanged.Execute();
         }
-
-        HandleInteractionsTimer();
     }
 }
 
@@ -91,19 +94,142 @@ void USKInteractionComponent::OnOverlapEnd(UPrimitiveComponent *OverlappedCompon
         {
             InteractablesInVicinity.Remove(OtherActor);
             DataGuard.WriteUnlock();
+            OnVicinityChanged.Execute();
         }
-        InteractionTarget = nullptr;
+         InteractionTarget = nullptr;
+    }
+}
+
+void USKInteractionComponent::HandleVicinityChanged()
+{
+    if (!bIsActiveAtomic.load())
+    {
+        bIsActiveAtomic.store(true);
+        AsyncInteractionHandle();
+    }
+
+    else if (InteractablesInVicinity.IsEmpty())
+    {
+        bIsActiveAtomic.store(false);
     }
 }
 
 void USKInteractionComponent::AsyncInteractionHandle()
 {
-    Async(EAsyncExecution::TaskGraph, [&]() { HandleInteractionActor(); });
+#if !UE_BUILD_SHIPPING
+    TRACE_CPUPROFILER_EVENT_SCOPE_STR("USKInteractionComponent::AsyncInteractionHandle");
+#endif
+
+    Async(EAsyncExecution::Thread, [this, WeakOwner = TWeakObjectPtr<AActor>(GetOwner())]() {
+        while (bIsActiveAtomic.load())
+        {
+            if (!WeakOwner.IsValid()) break;
+
+            const auto OwnerCharacter = Cast<ASKPlayerCharacter>(WeakOwner.Get());
+            const auto ASC =
+                Cast<USKAbilitySystemComponent>(OwnerCharacter ? OwnerCharacter->GetAbilitySystemComponent() : nullptr);
+
+            if (!ASC || !OwnerCharacter)
+            {
+                UE_LOGFMT(LogSKInteractions, Error, "Owner or ASC is invalid in AsyncInteractionHandle");
+                break;
+            }
+
+            if (ASC->HasMatchingGameplayTag(FSKGameplayTags::Get().Character_State_Action_GrabbingItem))
+            {
+                AsyncTask(ENamedThreads::GameThread, [this, ASC]() {
+                    ASC->CheckAndRemoveGameplayTag(FSKGameplayTags::Get().Character_State_Action_CanInteract);
+                    InteractionTarget = nullptr;
+                });
+
+                FPlatformProcess::Sleep(0.02f); // Sleep to reduce CPU usage
+                continue;
+            }
+
+            TArray<TWeakObjectPtr<AActor>> InteractablesSnapshot;
+
+            if (DataGuard.TryReadLock())
+            {
+                for (auto &Actor : InteractablesInVicinity)
+                {
+                    InteractablesSnapshot.Add(Actor);
+                }
+                DataGuard.ReadUnlock();
+            }
+
+            // Game Thread
+            AsyncTask(ENamedThreads::GameThread, [this, ASC, InteractablesSnapshot, OwnerCharacter]() {
+                const auto tagCanInteract = FSKGameplayTags::Get().Character_State_Action_CanInteract;
+
+                AActor *BestTarget = nullptr;
+                double BestDot = -1.0;
+                double Threshold = 0.0;
+
+                const FVector ViewLocation = OwnerCharacter->PlayerCamera->GetComponentLocation();
+                const FVector ViewDirection = OwnerCharacter->PlayerCamera->GetForwardVector();
+
+                for (const auto &WeakActor : InteractablesSnapshot)
+                {
+                    if (!WeakActor.IsValid()) continue;
+
+                    FVector Origin, Extent;
+                    WeakActor->GetActorBounds(false, Origin, Extent);
+
+                    const FVector ToTarget = UKismetMathLibrary::GetDirectionUnitVector(ViewLocation, Origin);
+                    const double Dot = FVector::DotProduct(ViewDirection, ToTarget);
+
+                    if (Dot > BestDot)
+                    {
+                        BestDot = Dot;
+                        BestTarget = WeakActor.Get();
+
+                        const double DistanceSqr = FVector::DistSquared(ViewLocation, Origin);
+                        const double ClampedDist = FMath::Clamp(DistanceSqr * 0.000002f + 0.95f, 0.0f, 0.99f);
+                        const double BoundsDelta = (Extent.GetAbsMax() * 0.002f);
+                        Threshold = ClampedDist - BoundsDelta;
+                    }
+                }
+
+                if (BestDot < Threshold || !BestTarget)
+                {
+                    InteractionTarget = nullptr;
+                    ASC->CheckAndRemoveGameplayTag(tagCanInteract);
+                    return;
+                }
+
+                FHitResult HitCheck = TraceToBoundingBox(BestTarget);
+
+                if (!HitCheck.bBlockingHit)
+                {
+                    if (!OwnerCharacter->TraceFromCamera(HitCheck, GrabDistance))
+                    {
+                        InteractionTarget = nullptr;
+                        ASC->CheckAndRemoveGameplayTag(tagCanInteract);
+                        return;
+                    }
+                }
+
+                AActor *Traced = HitCheck.GetActor();
+                if (Traced && Traced->Implements<USKInterfaceInteractable>())
+                {
+                    InteractionTarget = Traced;
+                    ASC->CheckAndAddGameplayTag(tagCanInteract);
+                }
+                else
+                {
+                    InteractionTarget = nullptr;
+                    ASC->CheckAndRemoveGameplayTag(tagCanInteract);
+                }
+            });
+
+            FPlatformProcess::Sleep(0.02f); // 50 FPS polling
+        }
+    });
 }
 
 void USKInteractionComponent::Interact()
 {
-    if (!InteractionTarget.IsValid()) return;
+    if (!InteractionTarget.IsValid() || !InteractionTarget->Implements<USKInterfaceInteractable>()) return;
 
     const bool bLogEnabled =
         GetSKOwnerCharacter()->bEnableLogging && GetSKOwnerCharacter()->bEnableLoggingAbilitySystem;
@@ -120,89 +246,11 @@ void USKInteractionComponent::Interact()
     ISKInterfaceInteractable::Execute_OnInteraction(InteractionTarget.Get(), GetOwner());
 }
 
-void USKInteractionComponent::HandleInteractionsTimer()
-{
-    if (!GetWorld()) return;
-
-    if (InteractablesInVicinity.Num() > 0 &&
-        GetOwner()->GetWorldTimerManager().IsTimerActive(InteractableActiveUpdateTimer))
-    {
-        return;
-    }
-
-    else if (InteractablesInVicinity.Num() > 0)
-    {
-        GetOwner()->GetWorldTimerManager().SetTimer(InteractableActiveUpdateTimer, this,
-                                                    &USKInteractionComponent::AsyncInteractionHandle, 0.1, true);
-    }
-
-    else
-    {
-        GetOwner()->GetWorldTimerManager().ClearTimer(InteractableActiveUpdateTimer);
-    }
-}
-
-void USKInteractionComponent::HandleInteractionActor()
-{
-
-    if (const auto Player = Cast<ASKPlayerCharacter>(GetOwner()))
-    {
-        const auto tagCanInteract = FSKGameplayTags::Get().Character_State_Action_CanInteract;
-
-        // No calculation if currently grabbing item
-        const auto ASC = Cast<USKAbilitySystemComponent>(GetSKOwnerCharacter()->GetAbilitySystemComponent());
-
-        if (ASC && ASC->HasMatchingGameplayTag(FSKGameplayTags::Get().Character_State_Action_GrabbingItem))
-        {
-            ASC->CheckAndRemoveGameplayTag(tagCanInteract);
-            InteractionTarget = nullptr; // Explicitly clearing interaction target
-            return;
-        }
-
-        InteractionTarget = GetLookedAtActor();
-
-        if (!InteractionTarget.IsValid())
-        {
-            ASC->CheckAndRemoveGameplayTag(tagCanInteract);
-            return;
-        }
-
-        // final check with trace
-        FHitResult TraceCheck = TraceToBoundingBox(InteractionTarget.Get());
-
-        if (!TraceCheck.bBlockingHit)
-        {
-            if (!Cast<ASKPlayerCharacter>(GetOwner())->TraceFromCamera(TraceCheck, GrabDistance))
-            {
-                InteractionTarget = nullptr;
-                return;
-            }
-        }
-
-        // final comparison
-        if (TraceCheck.GetActor() == InteractionTarget || TraceCheck.GetActor()->Implements<USKInterfaceInteractable>())
-        {
-            InteractionTarget = TraceCheck.GetActor();
-            ASC->CheckAndAddGameplayTag(tagCanInteract);
-        }
-        else
-        {
-            InteractionTarget = nullptr;
-        }
-    }
-    else
-    {
-        // TODO: AI logic?
-    }
-}
-
 FHitResult USKInteractionComponent::TraceToBoundingBox(const AActor *OtherActor) const
 {
     FHitResult HitResult;
 
     const auto tracePoint = OtherActor->GetComponentsBoundingBox().GetCenter();
-
-    // DrawDebugSphere(GetWorld(), tracePoint, 4.0f, 8, FColor::Red, false, 0.1f);
 
     GetWorld()->LineTraceSingleByChannel(HitResult,
                                          Cast<ASKPlayerCharacter>(GetOwner())->PlayerCamera->GetComponentLocation(),
@@ -214,14 +262,14 @@ FHitResult USKInteractionComponent::TraceToBoundingBox(const AActor *OtherActor)
 AActor *USKInteractionComponent::GetLookedAtActor() const
 {
 #if !UE_BUILD_SHIPPING
-    TRACE_CPUPROFILER_EVENT_SCOPE_STR("ASKPlayerCharacter::GetLookedAtActor");
+    TRACE_CPUPROFILER_EVENT_SCOPE_STR("USKInteractionComponent::GetLookedAtActor");
 #endif
 
     double BestDotProduct = -1.0f;
     double Threshold = 0.0f;
     AActor *Item = nullptr;
 
-    FRWScopeLock ReadLock(DataGuard, SLT_ReadOnly);
+    // FRWScopeLock ReadLock(DataGuard, SLT_ReadOnly);
 
     for (const auto &ItemInVicinity : InteractablesInVicinity)
     {

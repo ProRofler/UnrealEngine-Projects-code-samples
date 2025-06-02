@@ -5,9 +5,13 @@
 #include "Characters/Components/SKCharacterComponentBase.h"
 #include "CoreMinimal.h"
 
+#include <atomic>
+
 #include "SKInteractionComponent.generated.h"
 
 class UCapsuleComponent;
+
+DECLARE_DELEGATE(FOnVicinityChangedSignature);
 
 UCLASS()
 class SIRKNIGHT_API USKInteractionComponent : public USKCharacterComponentBase
@@ -21,30 +25,23 @@ class SIRKNIGHT_API USKInteractionComponent : public USKCharacterComponentBase
     virtual void BeginPlay() override;
 
   public:
-    UFUNCTION(BlueprintPure, Category = "SK Character|Interactions")
+    UFUNCTION(BlueprintPure, Category = "SK Character|Interaction component")
     AActor *GetInteractionTarget() const { return InteractionTarget.Get(); }
 
-    UFUNCTION(BlueprintPure, Category = "SK Character|Interactions")
+    UFUNCTION(BlueprintPure, Category = "SK Character|Interaction component")
     UCapsuleComponent *GetInteractionZone() const { return InteractionZone.Get(); }
 
-    UFUNCTION(BlueprintCallable, Category = "SK Character|Interactions")
+    UFUNCTION(BlueprintCallable, Category = "SK Character|Interaction component")
     virtual void Interact();
 
   public:
-    UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "SK Interactions settings")
+    UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "AA_SK Interaction component settings")
     float GrabDistance = 150.0f;
 
-  protected:
-    UPROPERTY(BlueprintReadWrite)
-    TObjectPtr<UCapsuleComponent> InteractionZone;
-
-    TSet<AActor *> InteractablesInVicinity;
-    TWeakObjectPtr<AActor> InteractionTarget;
-
   private:
-    void HandleInteractionsTimer();
-    virtual void HandleInteractionActor();
+    // TODO: move this to static lib
     FHitResult TraceToBoundingBox(const AActor *OtherActor) const;
+
     AActor *GetLookedAtActor() const;
 
   private:
@@ -56,13 +53,23 @@ class SIRKNIGHT_API USKInteractionComponent : public USKCharacterComponentBase
     void OnOverlapEnd(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp,
                       int32 OtherBodyIndex);
 
-    /************************************ MULTITHREADING  ******************************************/
+    /************************************ DATA  ******************************************/
   protected:
+    void HandleVicinityChanged();
+
+    FOnVicinityChangedSignature OnVicinityChanged;
+
+  private:
+    TSet<AActor *> InteractablesInVicinity;
+    TWeakObjectPtr<AActor> InteractionTarget;
+
+    UPROPERTY()
+    TObjectPtr<UCapsuleComponent> InteractionZone;
+
+    /************************************ MULTITHREADING  ******************************************/
+  private:
     mutable FRWLock DataGuard;
+    std::atomic<bool> bIsActiveAtomic{false};
 
     void AsyncInteractionHandle();
-
-    /************************************ Timers ******************************************/
-  private:
-    FTimerHandle InteractableActiveUpdateTimer;
 };

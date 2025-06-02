@@ -60,9 +60,9 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     /************************************ Attributes ******************************************/
   public:
     UFUNCTION(BlueprintPure)
-    FORCEINLINE float GetStaminaPercent() const;
+    float GetStaminaPercent() const;
     UFUNCTION(BlueprintPure)
-    FORCEINLINE float GetHealthPercent() const;
+    float GetHealthPercent() const;
 
     UFUNCTION(BlueprintPure, Category = "SK Character|Attributes")
     bool IsStaminaFull() const;
@@ -123,9 +123,10 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     virtual UAbilitySystemComponent *GetAbilitySystemComponent() const override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Character|Inventory")
-    TSoftObjectPtr<UDataTable> StartingInventoryData;
+    TObjectPtr<UDataTable> StartingInventoryData;
 
   protected:
+    UPROPERTY()
     TObjectPtr<USKCharacterMovementComponent> MovementComponent;
 
     UPROPERTY(VisibleAnywhere, Category = "SK Character|Inventory")
@@ -139,7 +140,9 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SK Character|GAS", meta = (AllowPrivateAccess = "true"))
     TObjectPtr<USKAbilitySystemComponent> AbilitySystemComponent;
+    UPROPERTY()
     TObjectPtr<const USKAttributeSet> AttributeSet;
+    UPROPERTY()
     TObjectPtr<const USKAttributeSetSkills> AttributeSetSkills;
 
     /************************************ Data assets  ******************************************/
@@ -148,10 +151,10 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     USKCharacterAnimationsDataAsset *AnimationsDA = nullptr;
 
     UPROPERTY(EditAnywhere, Category = "SK Ability System|Data Assets")
-    TSoftObjectPtr<USKAbilitiesDataAsset> GrantedAbilitiesDataAsset;
+    TObjectPtr<USKAbilitiesDataAsset> GrantedAbilitiesDataAsset;
 
     UPROPERTY(EditAnywhere, Category = "SK Ability System|Data Assets")
-    TSoftObjectPtr<USKBasicGameplayEffectsDataAsset> BasicGameplayEffects;
+    TObjectPtr<USKBasicGameplayEffectsDataAsset> BasicGameplayEffects;
 
     /************************************ DEBUGGING  ******************************************/
   public:
