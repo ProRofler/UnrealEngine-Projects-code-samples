@@ -29,7 +29,7 @@ class SIRKNIGHT_API USKCharacterMovementComponent : public UCharacterMovementCom
     void StartWalking();
 
     UFUNCTION(BlueprintPure, Category = "SK Character")
-    FORCEINLINE ASKBaseCharacter *GetSKOwnerCharacter() const;
+    ASKBaseCharacter *GetSKOwnerCharacter() const;
 
   private:
     void HandleRunningSpeed();

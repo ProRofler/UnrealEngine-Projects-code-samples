@@ -73,25 +73,21 @@ void ASKPlayerController::InitializeComponents()
 
 void ASKPlayerController::ToggleCursor()
 {
+    // TODO: Swtich context for UI
 
-    if (bIsInCursorMode == false)
+    SetIgnoreLookInput(!bIsInCursorMode);
+    bShowMouseCursor = !bIsInCursorMode;
+    bIsInCursorMode = !bIsInCursorMode;
+
+    if (bIsInCursorMode)
     {
-        bShowMouseCursor = true;
-
         FInputModeGameAndUI InputMode;
         InputMode.SetLockMouseToViewportBehavior(EMouseLockMode::LockAlways);
         SetInputMode(InputMode);
-        SetIgnoreLookInput(true);
-
-        bIsInCursorMode = true;
     }
     else
     {
-        bShowMouseCursor = false;
         SetInputMode(FInputModeGameOnly());
-        SetIgnoreLookInput(false);
-
-        bIsInCursorMode = false;
     }
 }
 

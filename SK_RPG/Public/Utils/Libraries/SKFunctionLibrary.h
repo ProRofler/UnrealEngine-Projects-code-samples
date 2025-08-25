@@ -17,4 +17,6 @@ class SIRKNIGHT_API USKFunctionLibrary : public UBlueprintFunctionLibrary
   public:
     UFUNCTION(BlueprintPure, Category = "SK Statics library | Animation Utils")
     static FName GetMontageSectionNameByIndex(const UAnimMontage *Montage, const int32 Index);
+
+    static FHitResult TraceToBoundingBox(const UWorld *World, const FVector TraceStartPoint, const AActor *OtherActor);
 };

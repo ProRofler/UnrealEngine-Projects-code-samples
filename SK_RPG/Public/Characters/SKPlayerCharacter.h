@@ -7,12 +7,15 @@
 
 #include "SKPlayerCharacter.generated.h"
 
-class UCameraComponent;
 class ASKPlayerController;
 class ASKPlayerHUD;
-class USKListViewWidget;
-class USKPhysicsHandleComponent;
 class USKInventoryObjectData;
+
+class USKListViewWidget;
+
+class UCameraComponent;
+class USKPhysicsHandleComponent;
+class USKInteractionComponent;
 
 UCLASS()
 class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
@@ -36,19 +39,20 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
     /************************************ UTILS ******************************************/
 
   public:
-    bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance);
-
-  private:
     bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance,
-                         const UPrimitiveComponent *ComponentToIgnore);
-    FHitResult TraceToActor(const AActor *OtherActor) const;
+                         const UPrimitiveComponent *ComponentToIgnore = nullptr);
 
     /************************************ Player specific ******************************************/
+  public:
+    USKInteractionComponent *GetInteractionComponent_Implementation() const { return InteractionComponent.Get(); }
+
   protected:
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SK Player camera")
     TObjectPtr<UCameraComponent> PlayerCamera;
     UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "SK Actor components")
     TObjectPtr<USKPhysicsHandleComponent> PhysicsHandle;
+    UPROPERTY()
+    TObjectPtr<USKInteractionComponent> InteractionComponent;
 
     /************************************ Attributes ******************************************/
   private:

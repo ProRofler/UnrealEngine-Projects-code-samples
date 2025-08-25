@@ -19,7 +19,7 @@ void ASKEquippableSword::SocketsSetup()
         TraceEndSocket = GetStaticMesh()->FindSocket(WeaponTipSocketName);
     }
 
-    ensureMsgf(TraceEndSocket && TraceEndSocket,
+    ensureMsgf(TraceStartSocket && TraceEndSocket,
                TEXT("Socket(s) are null. Either they have the wrong names or they weren't manually set in BP"));
 }
 

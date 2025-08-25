@@ -7,16 +7,15 @@ void ASKActivator::ActivateAll()
 {
     for (const auto Actor : ActorsToActivate)
     {
+        if (!Actor.IsValid()) continue;
+
         if (bRandomDelayActivation)
         {
-            const float randomRangeMin = RandomMin;
-            const float randomRangeMax = RandomMin + RandomMaxVariation;
-
-            const auto rand = FMath::RandRange(RandomMin, randomRangeMax);
+            const auto rand = FMath::RandRange(RandomMin, RandomMin + RandomMaxVariation);
 
             FTimerHandle TimerHandle;
             GetWorld()->GetTimerManager().SetTimer(TimerHandle, FTimerDelegate::CreateLambda([this, Actor]() {
-                                                       if (Actor.IsValid()) Actor->OnInteraction_Implementation(this);
+                                                       Actor->OnInteraction_Implementation(this);
                                                    }),
                                                    rand, false);
         }
@@ -32,6 +31,8 @@ bool ASKActivator::IsAnyDoorActive() const
 
     for (const auto Actor : ActorsToActivate)
     {
+        if (!Actor.IsValid()) continue;
+    
         if (Actor->GetIsActive()) return true;
     }
 

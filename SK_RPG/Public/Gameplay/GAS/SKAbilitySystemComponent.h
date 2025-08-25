@@ -38,11 +38,11 @@ class SIRKNIGHT_API USKAbilitySystemComponent : public UAbilitySystemComponent
     FGameplayTagChangedSignature OnTagChanged;
 
     // Checks if the GAS component has a provided tag and adds one if it doesn't
-    UFUNCTION(BlueprintCallable)
-    bool CheckAndAddGameplayTag(const FGameplayTag &Tag);
+    UFUNCTION(BlueprintCallable, Category = "SKAbilitySystem")
+    bool CheckAndAddGameplayTag(const FGameplayTag Tag);
     // Checks if the GAS component has a provided tag and removes one if it does
-    UFUNCTION(BlueprintCallable)
-    bool CheckAndRemoveGameplayTag(const FGameplayTag &Tag);
+    UFUNCTION(BlueprintCallable, Category = "SKAbilitySystem")
+    bool CheckAndRemoveGameplayTag(const FGameplayTag Tag);
 
   private:
     void AddCharacterAbilities(const TArray<TSubclassOf<UGameplayAbility>> &StartupAbilities);

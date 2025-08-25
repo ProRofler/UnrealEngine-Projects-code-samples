@@ -2,11 +2,8 @@
 
 DEFINE_LOG_CATEGORY(LogSKCharacterMovement);
 DEFINE_LOG_CATEGORY(LogSKCharacterComponent);
-
 DEFINE_LOG_CATEGORY(LogSKInteractions)
-
 DEFINE_LOG_CATEGORY(LogSKUserInterface);
-
 DEFINE_LOG_CATEGORY(LogSKAbilitySystem);
-
 DEFINE_LOG_CATEGORY(LogSKInput);
+DEFINE_LOG_CATEGORY(LogSKSignificance);

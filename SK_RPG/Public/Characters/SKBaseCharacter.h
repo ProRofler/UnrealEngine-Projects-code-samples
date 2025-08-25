@@ -20,7 +20,6 @@
 class USKCharacterMovementComponent;
 class USKInventoryComponent;
 class USKWeaponComponent;
-class USKInteractionComponent;
 class UPhysicsHandleComponent;
 class UAbilitySystemComponent;
 
@@ -99,9 +98,28 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
 
     FOnMainAttributeChangedSignature OnMainAttributeChanged;
 
+  protected:
+    UFUNCTION(BlueprintCallable, Category = "SK Character|Physics")
+    void ActivateRagdoll();
+
+    UFUNCTION(BlueprintCallable, Category = "SK Character|Physics")
+    void DeactivateRagdoll();
+
+    UFUNCTION(BlueprintPure, Category = "SK Character|Physics")
+    bool IsMeshFacingUpwards() const;
+
+  private:
+    void UpdateCapsuleTransform(const float Delta);
+
+    bool bShouldUpdateCapsuleTransform = false;
+
     /************************************ ACTIONS  ******************************************/
   public:
     void HandleUseItem(USKInventoryObjectData *ObjectData);
+
+    UFUNCTION()
+    void OnCapsuleBeginOverlap(UPrimitiveComponent *OverlappedComp, AActor *OtherActor, UPrimitiveComponent *OtherComp,
+                               int32 OtherBodyIndex, bool bFromSweep, const FHitResult &SweepResult);
 
     /************************************ State  ******************************************/
   public:
@@ -119,7 +137,6 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
   public:
     USKInventoryComponent *GetInventoryComponent_Implementation() const { return InventoryComponent.Get(); }
     USKWeaponComponent *GetWeaponComponent_Implementation() const { return WeaponComponent.Get(); }
-    USKInteractionComponent *GetInteractionComponent_Implementation() const { return InteractionComponent.Get(); }
     virtual UAbilitySystemComponent *GetAbilitySystemComponent() const override;
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Character|Inventory")
@@ -134,9 +151,6 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
 
     UPROPERTY(VisibleAnywhere, Category = "SK Character|Weapon")
     TObjectPtr<USKWeaponComponent> WeaponComponent;
-
-    UPROPERTY()
-    TObjectPtr<USKInteractionComponent> InteractionComponent;
 
     UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SK Character|GAS", meta = (AllowPrivateAccess = "true"))
     TObjectPtr<USKAbilitySystemComponent> AbilitySystemComponent;

@@ -26,6 +26,10 @@
 
 #include "Gameplay/GAS/SKAbilitySystemComponent.h"
 
+#include "AbilitySystemInterface.h"
+
+#include "Utils/Libraries/SKFunctionLibrary.h"
+
 #include "ProfilingDebugging/CpuProfilerTrace.h"
 
 USKInteractionComponent::USKInteractionComponent()
@@ -64,6 +68,7 @@ void USKInteractionComponent::BeginPlay()
             }
         }
     }
+
     if (!InteractablesInVicinity.IsEmpty())
     {
         OnVicinityChanged.Execute();
@@ -81,6 +86,7 @@ void USKInteractionComponent::OnBeginOverlap(UPrimitiveComponent *OverlappedComp
             InteractablesInVicinity.Add(OtherActor);
             DataGuard.WriteUnlock();
             OnVicinityChanged.Execute();
+            ISKInterfaceInteractable::Execute_SetIsInReach(OtherActor, true);
         }
     }
 }
@@ -95,8 +101,9 @@ void USKInteractionComponent::OnOverlapEnd(UPrimitiveComponent *OverlappedCompon
             InteractablesInVicinity.Remove(OtherActor);
             DataGuard.WriteUnlock();
             OnVicinityChanged.Execute();
+            ISKInterfaceInteractable::Execute_SetIsInReach(OtherActor, false);
         }
-         InteractionTarget = nullptr;
+        InteractionTarget = nullptr;
     }
 }
 
@@ -174,6 +181,7 @@ void USKInteractionComponent::AsyncInteractionHandle()
 
                     FVector Origin, Extent;
                     WeakActor->GetActorBounds(false, Origin, Extent);
+                    ISKInterfaceInteractable::Execute_SetIsFocused(WeakActor.Get(), false);
 
                     const FVector ToTarget = UKismetMathLibrary::GetDirectionUnitVector(ViewLocation, Origin);
                     const double Dot = FVector::DotProduct(ViewDirection, ToTarget);
@@ -197,7 +205,8 @@ void USKInteractionComponent::AsyncInteractionHandle()
                     return;
                 }
 
-                FHitResult HitCheck = TraceToBoundingBox(BestTarget);
+                const FVector traceStart = Cast<ASKPlayerCharacter>(GetOwner())->PlayerCamera->GetComponentLocation();
+                FHitResult HitCheck = USKFunctionLibrary::TraceToBoundingBox(GetWorld(), traceStart, BestTarget);
 
                 if (!HitCheck.bBlockingHit)
                 {
@@ -213,6 +222,8 @@ void USKInteractionComponent::AsyncInteractionHandle()
                 if (Traced && Traced->Implements<USKInterfaceInteractable>())
                 {
                     InteractionTarget = Traced;
+                    ISKInterfaceInteractable::Execute_SetIsFocused(Traced, true);
+
                     ASC->CheckAndAddGameplayTag(tagCanInteract);
                 }
                 else
@@ -224,6 +235,9 @@ void USKInteractionComponent::AsyncInteractionHandle()
 
             FPlatformProcess::Sleep(0.02f); // 50 FPS polling
         }
+
+        // To clear interaction target if the loop is done
+        AsyncTask(ENamedThreads::GameThread, [this]() { InteractionTarget = nullptr; });
     });
 }
 
@@ -246,60 +260,41 @@ void USKInteractionComponent::Interact()
     ISKInterfaceInteractable::Execute_OnInteraction(InteractionTarget.Get(), GetOwner());
 }
 
-FHitResult USKInteractionComponent::TraceToBoundingBox(const AActor *OtherActor) const
-{
-    FHitResult HitResult;
-
-    const auto tracePoint = OtherActor->GetComponentsBoundingBox().GetCenter();
-
-    GetWorld()->LineTraceSingleByChannel(HitResult,
-                                         Cast<ASKPlayerCharacter>(GetOwner())->PlayerCamera->GetComponentLocation(),
-                                         tracePoint, ECollisionChannel::ECC_Visibility);
-
-    return HitResult;
-}
-
-AActor *USKInteractionComponent::GetLookedAtActor() const
+// not used right now
+AActor *USKInteractionComponent::GetLookedAtActor(const TArray<AActor *> &Actors, const double Threshold = 0.0f) const
 {
 #if !UE_BUILD_SHIPPING
     TRACE_CPUPROFILER_EVENT_SCOPE_STR("USKInteractionComponent::GetLookedAtActor");
 #endif
 
     double BestDotProduct = -1.0f;
-    double Threshold = 0.0f;
     AActor *Item = nullptr;
 
-    // FRWScopeLock ReadLock(DataGuard, SLT_ReadOnly);
-
-    for (const auto &ItemInVicinity : InteractablesInVicinity)
+    for (const auto &Actor : Actors)
     {
-        // get actor bounds
-        FVector ActorBoundsOrigin, ActorBoxExtent;
-        ItemInVicinity->GetActorBounds(false, ActorBoundsOrigin, ActorBoxExtent);
+
+        if (const auto Character = Cast<ASKBaseCharacter>(Actor))
+        {
+            const auto ASC = Character->GetAbilitySystemComponent();
+            if (ASC &&
+                ASC->HasAnyMatchingGameplayTags(FSKGameplayTags::Get().Character_State_Dead.GetSingleTagContainer()))
+                continue;
+        }
 
         // calcuate dot product
         const auto PC = Cast<ASKPlayerCharacter>(GetOwner());
 
-        const auto DotProduct = FVector::DotProduct(
-            PC->PlayerCamera->GetForwardVector(),
-            UKismetMathLibrary::GetDirectionUnitVector(PC->PlayerCamera->GetComponentLocation(), ActorBoundsOrigin));
+        const auto DotProduct =
+            FVector::DotProduct(PC->PlayerCamera->GetForwardVector(),
+                                UKismetMathLibrary::GetDirectionUnitVector(PC->PlayerCamera->GetComponentLocation(),
+                                                                           Actor->GetActorLocation()));
 
         if (DotProduct >= BestDotProduct)
             BestDotProduct = DotProduct;
         else
             continue;
 
-        // dot product threshold variables
-        // magic numbers here were manually assigned for adjusting to an item mesh
-        const auto distanceSqr = FVector::DistSquared(PC->PlayerCamera->GetComponentLocation(), ActorBoundsOrigin);
-
-        const auto clampedDistance = FMath::Clamp(distanceSqr * 0.000002f + 0.95f, 0.0f, 0.99f);
-        const auto boundsDelta = (ActorBoxExtent.GetAbsMax() * 0.002f);
-
-        // Minimally required dot product value to be considered as if player looking at item
-        Threshold = clampedDistance - boundsDelta;
-
-        Item = ItemInVicinity;
+        Item = Actor;
     }
 
     return BestDotProduct < Threshold ? nullptr : Item;

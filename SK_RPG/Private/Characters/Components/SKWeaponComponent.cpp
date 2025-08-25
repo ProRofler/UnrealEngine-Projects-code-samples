@@ -65,7 +65,7 @@ void USKWeaponComponent::DestroyWeapon()
     EquippedWeapon->Destroy();
 }
 
-void USKWeaponComponent::SetIsTracingSword(bool Value)
+void USKWeaponComponent::SetIsTracingMelee(bool Value)
 {
 
     switch (Value)
@@ -79,17 +79,16 @@ void USKWeaponComponent::SetIsTracingSword(bool Value)
     }
 }
 
-void USKWeaponComponent::TogglePhysics()
+void USKWeaponComponent::SetSkeletalMeshPhysics(const bool IsActive)
 {
 
     const auto weaponMeshComponent = EquippedWeapon->FindComponentByClass<UStaticMeshComponent>();
     if (!weaponMeshComponent) return;
 
-    bIsPhysicsActive = !bIsPhysicsActive;
-    EquippedWeapon->SetActorEnableCollision(bIsPhysicsActive);
-    weaponMeshComponent->SetSimulatePhysics(bIsPhysicsActive);
+    EquippedWeapon->SetActorEnableCollision(IsActive);
+    weaponMeshComponent->SetSimulatePhysics(IsActive);
 
-    if (bIsPhysicsActive)
+    if (IsActive)
     {
         weaponMeshComponent->SetCollisionEnabled(ECollisionEnabled::PhysicsOnly);
         weaponMeshComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Block);

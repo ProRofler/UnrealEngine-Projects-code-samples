@@ -42,6 +42,9 @@ void FSKGameplayTags::InitializeNativeGameplayTags()
     GameplayTags.Character_State_Combat_WeaponUnsheathed =
         UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Character.State.Combat.WeaponUnsheathed"));
 
+    GameplayTags.Character_State_Combat_KnockedOut =
+        UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Character.State.Combat.KnockedOut"));
+
     /*
      * Primary character movement states
      */
@@ -63,6 +66,12 @@ void FSKGameplayTags::InitializeNativeGameplayTags()
 
     GameplayTags.Character_State_Movement_Walking =
         UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Character.State.Movement.Walking"));
+
+    /*
+     * Global state
+     */
+
+    GameplayTags.Character_State_Dead = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Character.State.Dead"));
 
     /*
      * Main attributes
@@ -108,7 +117,7 @@ void FSKGameplayTags::InitializeNativeGameplayTags()
     GameplayTags.Event_Ability_UseItem =
         UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Ability.UseItem"));
 
-    // Misc
+    // Combat
     GameplayTags.Event_Combat_SwitchWeapon =
         UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Combat.SwitchWeapon"));
 
@@ -116,7 +125,13 @@ void FSKGameplayTags::InitializeNativeGameplayTags()
         UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Combat.WeaponTraceStart"));
     GameplayTags.Event_Combat_WeaponTraceEnd =
         UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Combat.WeaponTraceEnd"));
+
     GameplayTags.Event_Combat_Hit = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Combat.Hit"));
+    GameplayTags.Event_Combat_Damage = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Combat.Damage"));
+
+    GameplayTags.Event_Combat_Recovered =
+        UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Combat.Recovered"));
+    GameplayTags.Event_Combat_Landed = UGameplayTagsManager::Get().AddNativeGameplayTag(FName("Event.Combat.Landed"));
 
     /*
      * Gameplay effects

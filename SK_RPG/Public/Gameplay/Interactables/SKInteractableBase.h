@@ -10,6 +10,7 @@
 #include "SKInteractableBase.generated.h"
 
 class UCapsuleComponent;
+class USKSignificanceManagerComponent;
 
 UCLASS(Blueprintable)
 class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInteractable
@@ -19,11 +20,9 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
   public:
     ASKInteractableBase();
 
-    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "SK Object settings",
-              meta = (EditCondition = "bCanEditMesh"))
-    TObjectPtr<UStaticMeshComponent> BaseMesh;
-
     virtual void OnInteraction_Implementation(const AActor *TriggeredActor) override;
+    virtual void SetIsFocused_Implementation(const bool Value) override;
+    virtual void SetIsInReach_Implementation(const bool Value) override;
 
 #if !UE_BUILD_SHIPPING
     virtual void Tick(float DeltaSeconds);
@@ -41,11 +40,16 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
     UFUNCTION(BlueprintCallable)
     const FORCEINLINE FGuid GetInteractableID() const { return InteractableID; }
 
-    // UFUNCTION(BlueprintCallable)
-    // void SetInteractableName(const FName &ItemName) { InteractableName = ItemName; };
+    FORCEINLINE static int32 GetInteractablesCount() { return InteractablesCount; }
+    FORCEINLINE UStaticMeshComponent *GetMesh() { return BaseMesh; }
+
+    // Is this needed?
+    float InitialLinearDampening;
+    float InitialAngularDampening;
 
   protected:
     virtual void BeginPlay() override;
+    virtual void EndPlay(const EEndPlayReason::Type Reason) override;
 
     UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SK Base properties | Interactables")
     FGuid InteractableID;
@@ -69,5 +73,19 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
 
     void DrawCenter();
 
+    UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "SK Object settings",
+              meta = (EditCondition = "bCanEditMesh"))
+    TObjectPtr<UStaticMeshComponent> BaseMesh;
+
     bool bCanEditMesh = true; // For disabling direct mesh editing if needed
+
+    // components
+    TObjectPtr<USKSignificanceManagerComponent> SigninficanceManagerComponent;
+
+  private:
+    void SetupOverlayMaterial();
+
+    UMaterialInstanceDynamic *OverlayDynMat = nullptr;
+
+    static int32 InteractablesCount;
 };

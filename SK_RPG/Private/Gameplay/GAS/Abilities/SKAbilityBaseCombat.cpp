@@ -8,6 +8,9 @@
 #include "Core/Interface/SKInterfaceCharacter.h"
 #include "Gameplay/GAS/SKNativeGameplayTags.h"
 
+#include "Core/SKLogCategories.h"
+#include "Logging/StructuredLog.h"
+
 #include "AbilitySystemBlueprintLibrary.h"
 
 void USKAbilityBaseCombat::ActivateAbility(const FGameplayAbilitySpecHandle Handle,
@@ -16,9 +19,31 @@ void USKAbilityBaseCombat::ActivateAbility(const FGameplayAbilitySpecHandle Hand
                                            const FGameplayEventData *TriggerEventData)
 {
     Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
+
+    SetupWeaponTrace();
+
+    if (!DamageEffect)
+    {
+        UE_LOGFMT(LogSKAbilitySystem, Error,
+                  "Actor's: {1} ability: {2} has no damage effect selected, attacks will be blank",
+                  ("1", GetSKOwnerCharacter()->GetName()), ("2", GetName()));
+    }
 }
 
-void USKAbilityBaseCombat::HandleWeaponTrace()
+void USKAbilityBaseCombat::EndAbility(const FGameplayAbilitySpecHandle Handle,
+                                      const FGameplayAbilityActorInfo *ActorInfo,
+                                      const FGameplayAbilityActivationInfo ActivationInfo, bool bReplicateEndAbility,
+                                      bool bWasCancelled)
+{
+    Super::EndAbility(Handle, ActorInfo, ActivationInfo, bReplicateEndAbility, bWasCancelled);
+
+    if (GetSKOwnerCharacter()->GetMesh()->IsSimulatingPhysics())
+    {
+        ISKInterfaceCharacter::Execute_SetCombatPhysics(GetSKOwnerCharacter(), false);
+    }
+}
+
+void USKAbilityBaseCombat::SetupWeaponTrace()
 {
     UAbilityTask_WaitGameplayEvent *traceStartTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
         this, FSKGameplayTags::Get().Event_Combat_WeaponTraceStart, nullptr, false, true);
@@ -27,13 +52,13 @@ void USKAbilityBaseCombat::HandleWeaponTrace()
         this, FSKGameplayTags::Get().Event_Combat_WeaponTraceEnd, nullptr, false, true);
 
     UAbilityTask_WaitGameplayEvent *traceHitTask = UAbilityTask_WaitGameplayEvent::WaitGameplayEvent(
-        this, FSKGameplayTags::Get().Event_Combat_Hit, nullptr, true, true);
+        this, FSKGameplayTags::Get().Event_Combat_Hit, nullptr, false, true);
 
     if (traceStartTask && traceEndTask && traceHitTask)
     {
-        traceStartTask->EventReceived.AddDynamic(this, &ThisClass::OnGameplayEvent);
-        traceEndTask->EventReceived.AddDynamic(this, &ThisClass::OnGameplayEvent);
-        traceHitTask->EventReceived.AddDynamic(this, &ThisClass::OnGameplayEvent);
+        traceStartTask->EventReceived.AddDynamic(this, &USKAbilityBaseCombat::OnGameplayEventTrace);
+        traceEndTask->EventReceived.AddDynamic(this, &USKAbilityBaseCombat::OnGameplayEventTrace);
+        traceHitTask->EventReceived.AddDynamic(this, &USKAbilityBaseCombat::OnGameplayEventHit);
 
         traceStartTask->ReadyForActivation();
         traceEndTask->ReadyForActivation();
@@ -41,25 +66,60 @@ void USKAbilityBaseCombat::HandleWeaponTrace()
     }
 }
 
-void USKAbilityBaseCombat::OnGameplayEvent(FGameplayEventData Payload)
+void USKAbilityBaseCombat::OnGameplayEventTrace(FGameplayEventData Payload)
 {
     const auto weaponComponent = ISKInterfaceCharacter::Execute_GetWeaponComponent(GetSKOwnerCharacter());
     if (!weaponComponent) return;
 
-    const auto EventTag = Payload.EventTag;
+    if (Payload.EventTag == FSKGameplayTags::Get().Event_Combat_WeaponTraceStart)
+    {
+        weaponComponent->SetIsTracingMelee(true);
+    }
+    else if (Payload.EventTag == FSKGameplayTags::Get().Event_Combat_WeaponTraceEnd)
+    {
+        weaponComponent->SetIsTracingMelee(false);
+    }
+}
 
-    if (EventTag == FSKGameplayTags::Get().Event_Combat_WeaponTraceStart)
+void USKAbilityBaseCombat::OnGameplayEventHit(FGameplayEventData Payload)
+{
+    const auto weaponComponent = ISKInterfaceCharacter::Execute_GetWeaponComponent(GetSKOwnerCharacter());
+    if (!weaponComponent) return;
+
+    weaponComponent->SetIsTracingMelee(false);
+
+    if (DamageEffect && Payload.Target && Payload.Target->Implements<UAbilitySystemInterface>())
     {
-        UE_LOG(LogTemp, Warning, TEXT("Trace start"));
-        weaponComponent->SetIsTracingSword(true);
+        AActor *target = ConstCast(Payload.Target);
+        if (!target) return;
+
+        HandleHitStop(.1f);
+
+        FGameplayEventData tPayload;
+        UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(target, FSKGameplayTags::Get().Event_Combat_Damage,
+                                                                 tPayload);
+
+        IAbilitySystemInterface *ASI = Cast<IAbilitySystemInterface>(target);
+        const auto ASC = ASI->GetAbilitySystemComponent();
+
+        FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageEffect, 0, ASC->MakeEffectContext());
+        ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
     }
-    else if (EventTag == FSKGameplayTags::Get().Event_Combat_WeaponTraceEnd)
+    else
     {
-        UE_LOG(LogTemp, Warning, TEXT("Trace end"));
-        weaponComponent->SetIsTracingSword(false);
+        HandleHitStop(.5f);
     }
-    else if (EventTag == FSKGameplayTags::Get().Event_Combat_Hit)
+}
+
+void USKAbilityBaseCombat::HandleHitStop(const float Time) const
+{
+    if (GetWorld())
     {
-        UE_LOG(LogTemp, Warning, TEXT("HIT"));
+        ISKInterfaceCharacter::Execute_SetCombatPhysics(GetSKOwnerCharacter(), true);
+
+        FTimerHandle TimerHandle;
+        GetWorld()->GetTimerManager().SetTimer(
+            TimerHandle, [this]() { ISKInterfaceCharacter::Execute_SetCombatPhysics(GetSKOwnerCharacter(), false); },
+            Time, false);
     }
 }

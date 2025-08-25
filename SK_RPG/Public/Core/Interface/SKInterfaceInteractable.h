@@ -20,4 +20,10 @@ class SIRKNIGHT_API ISKInterfaceInteractable
   public:
     UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Implemented interfaces")
     void OnInteraction(const AActor *TriggeredActor);
+
+    UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Implemented interfaces")
+    void SetIsFocused(const bool Value);
+
+    UFUNCTION(BlueprintCallable, BlueprintNativeEvent, Category = "Implemented interfaces")
+    void SetIsInReach(const bool Value);
 };

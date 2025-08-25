@@ -16,7 +16,7 @@ void USKAbilitySystemComponent::AbilityInputTagPressed(const FGameplayTag &Input
 {
     if (!InputTag.IsValid()) return;
 
-    //UE_LOGFMT(LogSKInput, Display, "Received pressed {1}", InputTag.ToString());
+    // UE_LOGFMT(LogSKInput, Display, "Received pressed {1}", InputTag.ToString());
 
     FScopedAbilityListLock ActiveScopeLoc(*this);
     for (FGameplayAbilitySpec &AbilitySpec : GetActivatableAbilities())
@@ -37,7 +37,7 @@ void USKAbilitySystemComponent::AbilityInputTagHeld(const FGameplayTag &InputTag
 {
     if (!InputTag.IsValid()) return;
 
-    //UE_LOGFMT(LogSKInput, Display, "Received held {1}", InputTag.ToString());
+    // UE_LOGFMT(LogSKInput, Display, "Received held {1}", InputTag.ToString());
 
     FScopedAbilityListLock ActiveScopeLoc(*this);
     for (FGameplayAbilitySpec &AbilitySpec : GetActivatableAbilities())
@@ -57,7 +57,7 @@ void USKAbilitySystemComponent::AbilityInputTagReleased(const FGameplayTag &Inpu
 {
     if (!InputTag.IsValid()) return;
 
-    //UE_LOGFMT(LogSKInput, Display, "Received released {1}", InputTag.ToString());
+    // UE_LOGFMT(LogSKInput, Display, "Received released {1}", InputTag.ToString());
 
     FScopedAbilityListLock ActiveScopeLoc(*this);
     for (FGameplayAbilitySpec &AbilitySpec : GetActivatableAbilities())
@@ -95,7 +95,7 @@ void USKAbilitySystemComponent::HandleTagChanged(const FGameplayTag Tag, int32 N
 
 //
 
-bool USKAbilitySystemComponent::CheckAndAddGameplayTag(const FGameplayTag &Tag)
+bool USKAbilitySystemComponent::CheckAndAddGameplayTag(const FGameplayTag Tag)
 {
     if (HasMatchingGameplayTag(Tag))
     {
@@ -108,7 +108,7 @@ bool USKAbilitySystemComponent::CheckAndAddGameplayTag(const FGameplayTag &Tag)
     }
 }
 
-bool USKAbilitySystemComponent::CheckAndRemoveGameplayTag(const FGameplayTag &Tag)
+bool USKAbilitySystemComponent::CheckAndRemoveGameplayTag(const FGameplayTag Tag)
 {
     if (HasMatchingGameplayTag(Tag))
     {
@@ -156,7 +156,7 @@ void USKAbilitySystemComponent::AddCharacterPassiveAbilities(
     for (const TSubclassOf<UGameplayAbility> AbilityClass : StartupPassiveAbilities)
     {
         FGameplayAbilitySpec AbilitySpec = FGameplayAbilitySpec(AbilityClass, 1);
-        if (const auto *SKAbility = Cast<USKAbilityBase>(AbilitySpec.Ability))
+        if (Cast<USKAbilityBase>(AbilitySpec.Ability))
         {
             GiveAbilityAndActivateOnce(AbilitySpec);
         }

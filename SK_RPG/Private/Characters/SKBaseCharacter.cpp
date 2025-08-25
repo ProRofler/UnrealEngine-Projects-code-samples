@@ -8,7 +8,6 @@
 #include "Async/Async.h"
 
 #include "Characters/Components/SKCharacterMovementComponent.h"
-#include "Characters/Components/SKInteractionComponent.h"
 #include "Characters/Components/SKInventoryComponent.h"
 #include "Characters/Components/SKStateMachineComponent.h"
 #include "Characters/Components/SKWeaponComponent.h"
@@ -39,11 +38,15 @@ ASKBaseCharacter::ASKBaseCharacter(const FObjectInitializer &ObjectInitializer)
 
     WeaponComponent = CreateDefaultSubobject<USKWeaponComponent>("Weapon component");
 
-    InteractionComponent = CreateDefaultSubobject<USKInteractionComponent>("Interaction component");
-    InteractionComponent->GetInteractionZone()->SetupAttachment(GetRootComponent());
-
     // GAS
     AbilitySystemComponent = CreateDefaultSubobject<USKAbilitySystemComponent>("Ability system component");
+
+    // Only overlap custom channel for WorldDamageObject channel
+    if (GetCapsuleComponent())
+    {
+        GetCapsuleComponent()->SetCollisionResponseToChannel(ECollisionChannel::ECC_GameTraceChannel1,
+                                                             ECollisionResponse::ECR_Overlap);
+    }
 }
 
 /************************************ UE INHERITED ******************************************/
@@ -52,7 +55,6 @@ void ASKBaseCharacter::BeginPlay()
 {
     Super::BeginPlay();
 
-    check(InteractionComponent);
     check(MovementComponent);
     check(AbilitySystemComponent);
     check(BasicGameplayEffects)
@@ -64,6 +66,11 @@ void ASKBaseCharacter::BeginPlay()
         AttributeSet = CastChecked<USKAttributeSet>(AbilitySystemComponent->GetSet<USKAttributeSet>());
         AttributeSetSkills =
             CastChecked<USKAttributeSetSkills>(AbilitySystemComponent->GetSet<USKAttributeSetSkills>());
+    }
+
+    if (GetCapsuleComponent())
+    {
+        GetCapsuleComponent()->OnComponentBeginOverlap.AddDynamic(this, &ASKBaseCharacter::OnCapsuleBeginOverlap);
     }
 
     checkf(GrantedAbilitiesDataAsset, TEXT("You need to assign abilities data asset"));
@@ -79,6 +86,13 @@ void ASKBaseCharacter::Tick(float DeltaTime)
 {
     Super::Tick(DeltaTime);
     HandleIdling();
+
+    // Update capsule if character is in ragdoll state but not dead yet
+    if (bShouldUpdateCapsuleTransform &&
+        !AbilitySystemComponent->HasMatchingGameplayTag(FSKGameplayTags::Get().Character_State_Dead))
+    {
+        UpdateCapsuleTransform(DeltaTime);
+    }
 }
 
 /************************************ Attributes ******************************************/
@@ -122,17 +136,9 @@ void ASKBaseCharacter::HandleMainAttributeChange(const FSKAttributeChangeData Ch
 
 void ASKBaseCharacter::HandleDeath()
 {
-
     OnCharacterDeath.Broadcast();
 
-    GetCharacterMovement()->DisableMovement();
-    GetCharacterMovement()->Deactivate();
-
-    GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
-    GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
-    GetMesh()->SetSimulatePhysics(true);
-    GetMesh()->SetLinearDamping(20.f);
-    GetMesh()->SetAngularDamping(20.f);
+    ActivateRagdoll();
 }
 
 bool ASKBaseCharacter::IsStaminaFull() const
@@ -199,8 +205,12 @@ void ASKBaseCharacter::Landed(const FHitResult &Hit)
 {
     Super::Landed(Hit);
 
-    const auto velocity = GetVelocity().Z;
-    if (-velocity < BasicGameplayEffects->LandingSpeedRange.X) return;
+    float velocity = GetVelocity().Z;
+    if (-velocity < BasicGameplayEffects->LandingSpeedRange.X)
+    {
+        velocity = GetMesh()->GetBoneLinearVelocity("pelvis").Z;
+        if (-velocity < BasicGameplayEffects->LandingSpeedRange.X) return;
+    }
 
     // Make handle and apply spec to self
     const auto GESpecHandle = AbilitySystemComponent->MakeGESpecHandle(BasicGameplayEffects->FallDamageGameplayEffect);
@@ -268,6 +278,72 @@ void ASKBaseCharacter::TryRunning() const
 
 /************************************ ACTIONS  ******************************************/
 
+void ASKBaseCharacter::ActivateRagdoll()
+{
+    GetMesh()->SetSimulatePhysics(true);
+    GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+    bShouldUpdateCapsuleTransform = true;
+}
+
+void ASKBaseCharacter::DeactivateRagdoll()
+{
+    GetMesh()->SetSimulatePhysics(false);
+    GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+    bShouldUpdateCapsuleTransform = false;
+}
+
+void ASKBaseCharacter::UpdateCapsuleTransform(const float Delta)
+{
+    auto CDO = Cast<ASKBaseCharacter>(GetClass()->GetDefaultObject());
+    const FVector MeshOriginalRelativeLocation = CDO->GetMesh()->GetRelativeLocation();
+
+    const FVector pelvisLocation = GetMesh()->GetBoneLocation("pelvis");
+    const FVector neckLocation = GetMesh()->GetBoneLocation("head");
+
+    // -100.f here represents the distance from pelvis bone to the ground that shoud be traced
+    const FVector TraceEndPoint = pelvisLocation + FVector(0.f, 0.f, -100.f);
+
+    FVector targetLocation;
+    FVector interpLocation;
+
+    FHitResult HitResult;
+    FCollisionQueryParams Params;
+    Params.AddIgnoredActor(this);
+    if (GetWorld()->LineTraceSingleByChannel(HitResult, pelvisLocation, TraceEndPoint,
+                                             ECollisionChannel::ECC_WorldDynamic, Params))
+    {
+
+        targetLocation = HitResult.Location - MeshOriginalRelativeLocation;
+        interpLocation = FMath::VInterpTo(GetCapsuleComponent()->GetComponentLocation(), targetLocation, Delta, 30.f);
+
+        Landed(HitResult);
+    }
+    else
+    {
+        targetLocation = pelvisLocation - MeshOriginalRelativeLocation;
+        interpLocation = FMath::VInterpTo(GetCapsuleComponent()->GetComponentLocation(), targetLocation, Delta, 30.f);
+    }
+
+    FRotator targetRotation;
+
+    IsMeshFacingUpwards() ? targetRotation = (pelvisLocation - neckLocation).Rotation()
+                          : targetRotation = (neckLocation - pelvisLocation).Rotation();
+
+    const FRotator interpRotation =
+        FMath::RInterpTo(FRotator(0.f, GetCapsuleComponent()->GetComponentRotation().Yaw, 0.f),
+                         FRotator(0.f, targetRotation.Yaw, 0.f), Delta, 30.f);
+
+    GetCapsuleComponent()->SetWorldLocation(interpLocation);
+    GetCapsuleComponent()->SetWorldRotation(interpRotation);
+}
+
+bool ASKBaseCharacter::IsMeshFacingUpwards() const
+{
+    const FVector boneVector = FRotationMatrix(GetMesh()->GetSocketRotation("pelvis")).GetScaledAxis(EAxis::Y);
+
+    return FVector::DotProduct(boneVector, FVector(0.f, 0.f, 1.f)) > 0.f;
+}
+
 void ASKBaseCharacter::HandleUseItem(USKInventoryObjectData *ObjectData)
 {
     // send event
@@ -276,6 +352,22 @@ void ASKBaseCharacter::HandleUseItem(USKInventoryObjectData *ObjectData)
     eventPayload.OptionalObject = ObjectData;
 
     AbilitySystemComponent->HandleGameplayEvent(FSKGameplayTags::Get().Event_Ability_UseItem, &eventPayload);
+}
+
+void ASKBaseCharacter::OnCapsuleBeginOverlap(UPrimitiveComponent *OverlappedComp, AActor *OtherActor,
+                                             UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep,
+                                             const FHitResult &SweepResult)
+{
+    if (IsPlayerControlled()) return;
+
+    if (OtherComp && OtherComp->GetOwner() && OtherComp->GetOwner()->GetVelocity().Size() > 650.f)
+    {
+        FGameplayEventData payload;
+        payload.Instigator = OtherComp->GetOwner();
+
+        UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(this, FSKGameplayTags::Get().Event_Combat_Hit,
+                                                                 payload);
+    }
 }
 
 /************************************ STATE  ******************************************/

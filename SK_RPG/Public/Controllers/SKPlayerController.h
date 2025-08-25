@@ -23,7 +23,7 @@ class SIRKNIGHT_API ASKPlayerController : public APlayerController
     virtual void BeginPlay() override;
 
     UFUNCTION(BlueprintCallable, Category = "SK Getters")
-    ASKPlayerHUD *GetPlayerHUD() { return PlayerHUD.Get(); }
+    FORCEINLINE ASKPlayerHUD *GetPlayerHUD() { return PlayerHUD.Get(); }
 
     UFUNCTION(BlueprintCallable, Category = "SK HUD")
     void ToggleCursor();

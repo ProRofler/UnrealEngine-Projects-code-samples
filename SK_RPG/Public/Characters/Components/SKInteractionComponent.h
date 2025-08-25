@@ -35,14 +35,11 @@ class SIRKNIGHT_API USKInteractionComponent : public USKCharacterComponentBase
     virtual void Interact();
 
   public:
-    UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "AA_SK Interaction component settings")
+    UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "SK Interaction component settings")
     float GrabDistance = 150.0f;
 
-  private:
-    // TODO: move this to static lib
-    FHitResult TraceToBoundingBox(const AActor *OtherActor) const;
-
-    AActor *GetLookedAtActor() const;
+    UFUNCTION(BlueprintPure, Category = "SK Interaction component")
+    AActor *GetLookedAtActor(const TArray<AActor *> &Actors, const double Threshold) const;
 
   private:
     UFUNCTION()

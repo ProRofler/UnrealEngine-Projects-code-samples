@@ -8,6 +8,8 @@
 #include "Characters/Components/SKInventoryComponent.h"
 #include "Characters/Components/SKPhysicsHandleComponent.h"
 
+#include "Components/CapsuleComponent.h"
+
 #include "Core/Interface/SKInterfaceInteractable.h"
 #include "Core/SKCoreTypes.h"
 #include "Gameplay/Interactables/SKKeyItem.h"
@@ -40,6 +42,9 @@ ASKPlayerCharacter::ASKPlayerCharacter(const FObjectInitializer &ObjectInitializ
     // GetMesh()->SetupAttachment(PlayerCamera);
 
     PhysicsHandle = CreateDefaultSubobject<USKPhysicsHandleComponent>("Physics handle");
+
+    InteractionComponent = CreateDefaultSubobject<USKInteractionComponent>("Interaction component");
+    InteractionComponent->GetInteractionZone()->SetupAttachment(GetRootComponent());
 }
 /************************************ UE INHERITED ******************************************/
 
@@ -259,9 +264,9 @@ void ASKPlayerCharacter::DropItem(USKInventoryObjectData *ItemToRemove, const in
 
     if (TraceFromCamera(dropPosition, 150.0f))
     {
-        AActor *SpawnedItem = GetWorld()->SpawnActor<AActor>(
-            ItemToRemove->GetItemClass(), dropPosition.ImpactPoint + (dropPosition.ImpactNormal * 25.0f),
-            GetActorForwardVector().Rotation());
+        GetWorld()->SpawnActor<AActor>(ItemToRemove->GetItemClass(),
+                                       dropPosition.ImpactPoint + (dropPosition.ImpactNormal * 25.0f),
+                                       GetActorForwardVector().Rotation());
     }
     else
     {
@@ -331,25 +336,6 @@ void ASKPlayerCharacter::HandleAlternativeAction()
 
 /********************* UTILS *********************/
 
-FHitResult ASKPlayerCharacter::TraceToActor(const AActor *OtherActor) const
-{
-
-    FHitResult HitResult;
-
-    GetWorld()->LineTraceSingleByChannel(HitResult, PlayerCamera->GetComponentLocation(),
-                                         OtherActor->GetActorLocation(), ECollisionChannel::ECC_Visibility);
-
-    return HitResult;
-}
-
-bool ASKPlayerCharacter::TraceFromCamera(FHitResult &HitResult, const float TraceDistance)
-{
-    FVector TraceStart = PlayerCamera->GetComponentLocation();
-    FVector TracecEnd = TraceStart + (PlayerCamera->GetForwardVector() * TraceDistance);
-
-    return GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TracecEnd, ECollisionChannel::ECC_Visibility);
-}
-
 bool ASKPlayerCharacter::TraceFromCamera(FHitResult &HitResult, const float TraceDistance,
                                          const UPrimitiveComponent *ComponentToIgnore)
 {
@@ -357,7 +343,10 @@ bool ASKPlayerCharacter::TraceFromCamera(FHitResult &HitResult, const float Trac
     FVector TracecEnd = TraceStart + (PlayerCamera->GetForwardVector() * TraceDistance);
 
     FCollisionQueryParams TraceParams;
-    TraceParams.AddIgnoredComponent(ComponentToIgnore);
+    if (ComponentToIgnore)
+    {
+        TraceParams.AddIgnoredComponent(ComponentToIgnore);
+    }
 
     return GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TracecEnd, ECollisionChannel::ECC_Visibility,
                                                 TraceParams);

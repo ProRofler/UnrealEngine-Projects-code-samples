@@ -27,6 +27,7 @@ struct FSKGameplayTags
     FGameplayTag Character_State_Combat_ActiveAttacking;
     FGameplayTag Character_State_Combat_Blocking;
     FGameplayTag Character_State_Combat_WeaponUnsheathed;
+    FGameplayTag Character_State_Combat_KnockedOut;
 
     FGameplayTag Character_State_Movement_Idling;
     FGameplayTag Character_State_Movement_Crouching;
@@ -34,6 +35,8 @@ struct FSKGameplayTags
     FGameplayTag Character_State_Movement_Running;
     FGameplayTag Character_State_Movement_Sprinting;
     FGameplayTag Character_State_Movement_Walking;
+
+    FGameplayTag Character_State_Dead;
 
     FGameplayTag Attibute_Main_Stamina;
     FGameplayTag Attibute_Main_Health;
@@ -52,8 +55,12 @@ struct FSKGameplayTags
 
     FGameplayTag Event_Combat_SwitchWeapon;
     FGameplayTag Event_Combat_Hit;
+    FGameplayTag Event_Combat_Damage;
     FGameplayTag Event_Combat_WeaponTraceStart;
     FGameplayTag Event_Combat_WeaponTraceEnd;
+
+    FGameplayTag Event_Combat_Recovered;
+    FGameplayTag Event_Combat_Landed;
 
     FGameplayTag Effect_Data_FallDamage;
 
