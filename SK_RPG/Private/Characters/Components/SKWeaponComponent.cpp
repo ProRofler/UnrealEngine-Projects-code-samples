@@ -10,52 +10,78 @@
 #include "Gameplay/Interactables/SKWeapon.h"
 
 #include "Characters/Components/SKInventoryComponent.h"
+#include "Core/Interface/SKInterfaceCharacter.h"
 #include "Characters/SKBaseCharacter.h"
+
+#include "Kismet/GameplayStatics.h"
+#include "Components/DecalComponent.h"
 
 #include "Gameplay/GAS/SKNativeGameplayTags.h"
 
 void USKWeaponComponent::BeginPlay() { Super::BeginPlay(); }
+
+void USKWeaponComponent::HandleWeaponTrace() const
+{
+    FHitResult HitResult;
+    Cast<ASKEquippableSword>(EquippedWeapon)->HitDetect(HitResult);
+
+    if (HitResult.bBlockingHit)
+    {
+        FGameplayEventData Payload;
+        // TODO: Send hit info
+        Payload.EventTag = FSKGameplayTags::Get().Event_Combat_Hit;
+        Payload.Instigator = GetOwner();
+        Payload.Target = HitResult.GetActor();
+
+        UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetSKOwnerCharacter(),
+                                                                 FSKGameplayTags::Get().Event_Combat_Hit, Payload);
+
+        // TEMP DECAL SPAWN
+        if (DecalMat)
+        {
+            const auto Decal = UGameplayStatics::SpawnDecalAtLocation(GetWorld(),                         //
+                                                                      DecalMat,                           //
+                                                                      FVector(10.f),                      //
+                                                                      HitResult.ImpactPoint,              //
+                                                                      HitResult.ImpactNormal.Rotation()); //
+            if (Decal) Decal->SetFadeOut(1.f, 2.f);
+        }
+    }
+}
 
 void USKWeaponComponent::TickComponent(float DeltaTime, ELevelTick TickType,
                                        FActorComponentTickFunction *ThisTickFunction)
 {
     Super::TickComponent(DeltaTime, TickType, ThisTickFunction);
 
-    if (bIsTracingSword)
-    {
-        FHitResult HitResult;
-        Cast<ASKEquippableSword>(EquippedWeapon)->HitDetect(HitResult);
-
-        if (HitResult.bBlockingHit)
-        {
-            FGameplayEventData Payload;
-            // TODO: Send hit info
-            Payload.EventTag = FSKGameplayTags::Get().Event_Combat_Hit;
-            Payload.Instigator = GetOwner();
-            Payload.Target = HitResult.GetActor();
-
-            UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(GetSKOwnerCharacter(),
-                                                                     FSKGameplayTags::Get().Event_Combat_Hit, Payload);
-        }
-    }
+    if (bIsTracingSword && EquippedWeapon) HandleWeaponTrace();
 }
 
-void USKWeaponComponent::SpawnWeapon(TSubclassOf<ASKEquippableBase> EquippableClass)
+void USKWeaponComponent::SpawnWeapon()
 {
 
-    if (!EquippableClass) return;
+    USKInventoryComponent *inventory = ISKInterfaceCharacter::Execute_GetInventoryComponent(GetOwner());
+    if (!inventory) return;
 
-    EquippedWeapon =
-        GetWorld()->SpawnActorDeferred<ASKEquippableSword>(EquippableClass, GetOwner()->GetActorTransform());
+    USKInventoryObjectData *mainWeaponSlot = inventory->GetMainWeaponSlot();
+    if (!mainWeaponSlot) return;
 
-    if (!EquippedWeapon) checkNoEntry();
+    const auto weaponCDO = Cast<ASKWeapon>(mainWeaponSlot->GetItemClass()->GetDefaultObject());
+    if (!weaponCDO || !weaponCDO->GetMesh() || !weaponCDO->GetMesh()->GetStaticMesh()) return;
 
-    EquippedWeapon->SetActorEnableCollision(false);
+    auto spawnedWeapon = GetWorld()->SpawnActorDeferred<ASKEquippableSword>(ASKEquippableSword::StaticClass(),
+                                                                            GetOwner()->GetActorTransform());
 
-    EquippedWeapon->AttachToComponent(GetSKOwnerCharacter()->GetMesh(),
-                                      FAttachmentTransformRules::SnapToTargetNotIncludingScale, "GripPoint");
+    if (spawnedWeapon)
+    {
+        spawnedWeapon->InitializeMeleeWeapon(weaponCDO->GetMesh()->GetStaticMesh());
+        spawnedWeapon->SetActorEnableCollision(false);
+        spawnedWeapon->AttachToComponent(GetSKOwnerCharacter()->GetMesh(),
+                                         FAttachmentTransformRules::SnapToTargetNotIncludingScale, "GripPoint");
+        spawnedWeapon->FinishSpawning(GetOwner()->GetActorTransform());
 
-    EquippedWeapon->FinishSpawning(GetOwner()->GetActorTransform());
+        EquippedWeapon = spawnedWeapon;
+    }
 }
 
 void USKWeaponComponent::DestroyWeapon()
@@ -67,10 +93,11 @@ void USKWeaponComponent::DestroyWeapon()
 
 void USKWeaponComponent::SetIsTracingMelee(bool Value)
 {
+    if (!EquippedWeapon) return;
 
     switch (Value)
     {
-    case 1: bIsTracingSword = true; break;
+    case true: bIsTracingSword = true; break;
 
     default:
         bIsTracingSword = false;
@@ -79,9 +106,8 @@ void USKWeaponComponent::SetIsTracingMelee(bool Value)
     }
 }
 
-void USKWeaponComponent::SetSkeletalMeshPhysics(const bool IsActive)
+void USKWeaponComponent::SetMainWeaponMeshPhysics(const bool IsActive)
 {
-
     const auto weaponMeshComponent = EquippedWeapon->FindComponentByClass<UStaticMeshComponent>();
     if (!weaponMeshComponent) return;
 
@@ -99,8 +125,31 @@ void USKWeaponComponent::SetSkeletalMeshPhysics(const bool IsActive)
         weaponMeshComponent->SetCollisionEnabled(ECollisionEnabled::NoCollision);
         weaponMeshComponent->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
         weaponMeshComponent->SetCollisionObjectType(ECC_Visibility);
-
-        EquippedWeapon->AttachToComponent(GetSKOwnerCharacter()->GetMesh(),
-                                          FAttachmentTransformRules::SnapToTargetNotIncludingScale, "GripPoint");
     }
+}
+
+void USKWeaponComponent::SoftResetWeaponTransform(const float Speed)
+{
+    if (EquippedWeapon && EquippedWeapon->GetStaticMeshComponent()->IsSimulatingPhysics()) return;
+
+    if (Speed <= 0.f)
+    {
+        EquippedWeapon->SetActorRelativeLocation(FVector::ZeroVector);
+        EquippedWeapon->SetActorRelativeRotation(FRotator::ZeroRotator);
+
+        return;
+    }
+
+    auto currentLocation = EquippedWeapon->GetRootComponent()->GetRelativeLocation();
+    auto currentRotation = EquippedWeapon->GetRootComponent()->GetRelativeRotation();
+    if (currentLocation.IsNearlyZero() && currentRotation.IsNearlyZero()) return;
+
+    EquippedWeapon->SetActorRelativeLocation(
+        FMath::VInterpConstantTo(currentLocation, FVector::ZeroVector, GetWorld()->GetDeltaSeconds(), Speed));
+    EquippedWeapon->SetActorRelativeRotation(
+        FMath::RInterpConstantTo(currentRotation, FRotator::ZeroRotator, GetWorld()->GetDeltaSeconds(), Speed));
+
+    FTimerHandle TimerHandle;
+    GetWorld()->GetTimerManager().SetTimer(
+        TimerHandle, [this, Speed]() { SoftResetWeaponTransform(Speed); }, 1.f, false, .01f);
 }

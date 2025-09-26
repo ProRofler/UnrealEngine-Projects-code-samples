@@ -16,17 +16,17 @@ class SIRKNIGHT_API ASKEquippableSword : public ASKEquippableBase
     void HitDetect(FHitResult &HitResult);
     void ResetTraceStartEnd();
 
+    void InitializeMeleeWeapon(UStaticMesh *MeleeWeaponMesh);
+
   protected:
     virtual void BeginPlay() override;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SK Weapon|Settings")
     FName WeaponBaseSocketName = "WeaponBase";
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "SK Weapon|Settings")
+    UPROPERTY()
     UStaticMeshSocket *TraceStartSocket;
 
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SK Weapon|Settings")
     FName WeaponTipSocketName = "WeaponTip";
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "SK Weapon|Settings")
+    UPROPERTY()
     UStaticMeshSocket *TraceEndSocket;
 
   private:

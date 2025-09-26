@@ -7,18 +7,17 @@
 
 #include "SKEquippableBase.generated.h"
 
-UCLASS()
+UCLASS(NotBlueprintable)
 class SIRKNIGHT_API ASKEquippableBase : public AActor
 {
     GENERATED_BODY()
 
   public:
     ASKEquippableBase();
-    UStaticMesh *GetStaticMesh() const;
+    FORCEINLINE UStaticMesh *GetStaticMesh() const { return BaseMesh->GetStaticMesh(); }
+    FORCEINLINE UStaticMeshComponent *GetStaticMeshComponent() const { return BaseMesh; }
 
   protected:
-    virtual void BeginPlay() override;
-
     UPROPERTY(VisibleDefaultsOnly, BlueprintReadOnly, Category = "SK Weapon Settings")
     UStaticMeshComponent *BaseMesh;
 };

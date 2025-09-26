@@ -34,14 +34,14 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
 #endif
 
     // getters
-    UFUNCTION(BlueprintCallable)
+    UFUNCTION(BlueprintPure)
     FORCEINLINE FName GetInteractableName() const { return InteractableName; }
 
-    UFUNCTION(BlueprintCallable)
+    UFUNCTION(BlueprintPure)
     const FORCEINLINE FGuid GetInteractableID() const { return InteractableID; }
 
     FORCEINLINE static int32 GetInteractablesCount() { return InteractablesCount; }
-    FORCEINLINE UStaticMeshComponent *GetMesh() { return BaseMesh; }
+    FORCEINLINE UStaticMeshComponent *GetMesh() const { return BaseMesh; }
 
     // Is this needed?
     float InitialLinearDampening;
@@ -69,7 +69,7 @@ class SIRKNIGHT_API ASKInteractableBase : public AActor, public ISKInterfaceInte
     float Integrity = 1.0f;
 
     UPROPERTY(EditAnywhere, Category = "SK Debugging")
-    bool bEnableLogging = true;
+    bool bEnableLogging = false;
 
     void DrawCenter();
 

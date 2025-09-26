@@ -146,13 +146,13 @@ class SIRKNIGHT_API ASKBaseCharacter : public ACharacter, public ISKInterfaceCha
     UPROPERTY()
     TObjectPtr<USKCharacterMovementComponent> MovementComponent;
 
-    UPROPERTY(VisibleAnywhere, Category = "SK Character|Inventory")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SK Character|Inventory")
     TObjectPtr<USKInventoryComponent> InventoryComponent;
 
-    UPROPERTY(VisibleAnywhere, Category = "SK Character|Weapon")
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SK Character|Weapon")
     TObjectPtr<USKWeaponComponent> WeaponComponent;
 
-    UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "SK Character|GAS", meta = (AllowPrivateAccess = "true"))
+    UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "SK Character|GAS", meta = (AllowPrivateAccess = "true"))
     TObjectPtr<USKAbilitySystemComponent> AbilitySystemComponent;
     UPROPERTY()
     TObjectPtr<const USKAttributeSet> AttributeSet;

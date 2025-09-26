@@ -2,21 +2,4 @@
 
 #include "Gameplay/Interactables/SKWeapon.h"
 
-#include "Gameplay/Equipables/SKEquippableBase.h"
-
-ASKWeapon::ASKWeapon()
-{
-    bCanEditMesh = false;
-    SetCollectibleType(ECollectibleType::Weapon);
-}
-
-void ASKWeapon::OnConstruction(const FTransform &Transform)
-{
-    if (EquippableWeaponClass)
-    {
-        const auto eqippableBase = Cast<ASKEquippableBase>((EquippableWeaponClass->GetDefaultObject()));
-        if (!eqippableBase) return;
-
-        BaseMesh->SetStaticMesh(eqippableBase->GetStaticMesh());
-    }
-}
+ASKWeapon::ASKWeapon() { SetCollectibleType(ECollectibleType::Weapon); }

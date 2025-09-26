@@ -23,6 +23,9 @@ class SIRKNIGHT_API USKCharacterComponentBase : public UActorComponent
   protected:
     virtual void BeginPlay() override;
 
+    UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Logging", meta = (DisplayPriority = 1))
+    bool bEnableLogging = false;
+
   private:
     TWeakObjectPtr<ASKBaseCharacter> SKCharacter = nullptr;
 

@@ -33,26 +33,33 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
     /************************************ UE INHERITED ******************************************/
 
   protected:
-    virtual void Tick(float DeltaTime) override;
     virtual void BeginPlay() override;
 
     /************************************ UTILS ******************************************/
 
   public:
+    UFUNCTION(BlueprintPure, Category = "SK Player | Utils")
     bool TraceFromCamera(FHitResult &HitResult, const float TraceDistance,
                          const UPrimitiveComponent *ComponentToIgnore = nullptr);
+
 
     /************************************ Player specific ******************************************/
   public:
     USKInteractionComponent *GetInteractionComponent_Implementation() const { return InteractionComponent.Get(); }
 
+    UFUNCTION(BlueprintPure, Category = "SK Player | Getters")
+    FORCEINLINE USkeletalMeshComponent *GetBodyMesh() { return Body; }
+
   protected:
-    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SK Player camera")
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SK Player Settings | Camera")
     TObjectPtr<UCameraComponent> PlayerCamera;
     UPROPERTY(BlueprintReadOnly, EditAnywhere, Category = "SK Actor components")
     TObjectPtr<USKPhysicsHandleComponent> PhysicsHandle;
     UPROPERTY()
     TObjectPtr<USKInteractionComponent> InteractionComponent;
+
+    UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = "SK Player Settings | Mesh")
+    TObjectPtr<USkeletalMeshComponent> Body;
 
     /************************************ Attributes ******************************************/
   private:
@@ -87,7 +94,4 @@ class SIRKNIGHT_API ASKPlayerCharacter : public ASKBaseCharacter
   protected:
     UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "SK Logging", meta = (EditCondition = "bEnableLogging"))
     bool bEnableLoggingInput = true;
-
-  private:
-    void PrintDebugInfo();
 };

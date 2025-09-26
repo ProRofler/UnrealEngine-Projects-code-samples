@@ -3,14 +3,13 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "Gameplay/Interactables/SKCollectible.h"
 
 #include "Core/Interface/SKInterfaceWeapon.h"
 
-#include "Gameplay/Interactables/SKCollectible.h"
-
-#include "Gameplay/Equipables/SKEquippableBase.h"
-
 #include "SKWeapon.generated.h"
+
+// TODO: a struct with weapon characteristics?
 
 UCLASS()
 class SIRKNIGHT_API ASKWeapon : public ASKCollectible, public ISKInterfaceWeapon
@@ -19,13 +18,4 @@ class SIRKNIGHT_API ASKWeapon : public ASKCollectible, public ISKInterfaceWeapon
 
   public:
     ASKWeapon();
-
-  protected:
-    UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "SK Weapon settings")
-    TSubclassOf<ASKEquippableBase> EquippableWeaponClass;
-
-    virtual void OnConstruction(const FTransform &Transform);
-
-  private:
-    TSubclassOf<ASKEquippableBase> TSubclaGetEquippableWeaponClass_Implementation() { return EquippableWeaponClass; }
 };

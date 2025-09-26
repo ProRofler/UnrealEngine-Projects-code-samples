@@ -10,28 +10,16 @@
 
 #include "Components/CapsuleComponent.h"
 
-#include "Core/Interface/SKInterfaceInteractable.h"
-#include "Core/SKCoreTypes.h"
-#include "Gameplay/Interactables/SKKeyItem.h"
-
 #include "Gameplay/GAS/SKAbilitySystemComponent.h"
 #include "Gameplay/GAS/SKNativeGameplayTags.h"
 
-#include "Kismet/GameplayStatics.h"
-#include "Kismet/KismetMathLibrary.h"
-
 #include "UI/Data/SKInventoryObjectData.h"
-#include "UI/SKPlayerHUD.h"
-#include "UI/Widgets/SKInventoryWidget.h"
 
 #include "Core/SKLogCategories.h"
 #include "Logging/StructuredLog.h"
 
 #include "Controllers/SKPlayerController.h"
 #include "EnhancedInputComponent.h"
-#include "EnhancedInputSubsystems.h"
-
-#include "ProfilingDebugging/CpuProfilerTrace.h"
 
 ASKPlayerCharacter::ASKPlayerCharacter(const FObjectInitializer &ObjectInitializer) : Super(ObjectInitializer)
 {
@@ -39,7 +27,9 @@ ASKPlayerCharacter::ASKPlayerCharacter(const FObjectInitializer &ObjectInitializ
     PlayerCamera->SetupAttachment(GetRootComponent());
     PlayerCamera->bUsePawnControlRotation = true;
 
-    // GetMesh()->SetupAttachment(PlayerCamera);
+    Body = CreateDefaultSubobject<USkeletalMeshComponent>("Player body mesh");
+    Body->SetupAttachment(GetRootComponent());
+    Body->bUseAttachParentBound = true; // body mesh will be culled out otherwise
 
     PhysicsHandle = CreateDefaultSubobject<USKPhysicsHandleComponent>("Physics handle");
 
@@ -47,15 +37,6 @@ ASKPlayerCharacter::ASKPlayerCharacter(const FObjectInitializer &ObjectInitializ
     InteractionComponent->GetInteractionZone()->SetupAttachment(GetRootComponent());
 }
 /************************************ UE INHERITED ******************************************/
-
-void ASKPlayerCharacter::Tick(float DeltaTime)
-{
-    Super::Tick(DeltaTime);
-
-#if !UE_BUILD_SHIPPING
-    PrintDebugInfo();
-#endif
-}
 
 void ASKPlayerCharacter::BeginPlay()
 {
@@ -135,121 +116,6 @@ void ASKPlayerCharacter::HandleIdling()
     {
         StopIdle();
     }
-}
-
-/************************************ DEBUG ******************************************/
-
-void ASKPlayerCharacter::PrintDebugInfo()
-{
-    // Vicinity Debug
-
-    // showing the amount of items in vicinity
-    /*
-     if (DataGuard.TryReadLock())
-    {
-
-        GEngine->AddOnScreenDebugMessage(-1, 0.0f, FColor::Blue,
-                                         "Items in list: " + FString::FromInt(InteractablesInVicinity.Num()), true);
-        DataGuard.ReadUnlock();
-    } */
-
-    // Show if can interact in the moment
-    /* if (InteractionTarget.IsValid())
-    {
-        GEngine->AddOnScreenDebugMessage(2, 0.0f, FColor::Emerald, "I'm looking at: " + InteractionTarget->GetName(),
-                                         true);
-    }*/
-
-    // Draw XY arrows for physics handle debug
-    /*
-    if (PhysicsHandle && PhysicsHandle->GrabbedComponent)
-    {
-        // �������� ������� ��������� � ������� Physics Handle
-        FVector HandleLocation;
-        FRotator HandleRotation;
-        PhysicsHandle->GetTargetLocationAndRotation(HandleLocation, HandleRotation);
-
-        // ����� �������
-        float ArrowLength = 30.0f;
-
-        // ������� �� ��� X (�������)
-        FVector XDirection = HandleRotation.RotateVector(FVector::ForwardVector) * ArrowLength;
-        FVector XArrowEnd = HandleLocation + XDirection;
-        DrawDebugDirectionalArrow(GetWorld(), HandleLocation, XArrowEnd,
-                                  25.0f,       // ����� "�������" ������
-                                  FColor::Red, // ���� ��� ��� X
-                                  false,       // ���������� ���������
-                                  -1.0f,       // ����� ����� ������
-                                  0,           // ���������
-                                  2.0f         // ������� �������
-        );
-
-        // ������� �� ��� Z (�����)
-        FVector ZDirection = HandleRotation.RotateVector(FVector::UpVector) * ArrowLength;
-        FVector ZArrowEnd = HandleLocation + ZDirection;
-        DrawDebugDirectionalArrow(GetWorld(), HandleLocation, ZArrowEnd,
-                                  25.0f,        // ����� "�������" ������
-                                  FColor::Blue, // ���� ��� ��� Z
-                                  false,        // ���������� ���������
-                                  -1.0f,        // ����� ����� ������
-                                  0,            // ���������
-                                  2.0f          // ������� �������
-        );
-    } */
-
-    // Interactible active rotation debug info
-    /*
-    if (InteractionTarget.IsValid())
-    {
-        // �������� ������� ��������� �������
-        FRotator InteractibleRotation = InteractionTarget->GetActorRotation();
-
-        // ������� ������� ��������� ������� �� �����
-        GEngine->AddOnScreenDebugMessage(
-            -1, // ���������� ID ���������, -1 ��������, ��� ��������� �������� ����� �����
-            0,  // ����� ����������� ���������
-            FColor::Cyan, // ���� ������
-            FString::Printf(TEXT("InteractionTarget Rotation: Pitch: %f, Yaw: %f, Roll: %f"),
-                            InteractibleRotation.Pitch, InteractibleRotation.Yaw, InteractibleRotation.Roll));
-    }*/
-
-    // Phys handle rotation debug info
-    /*
-    if (PhysicsHandle)
-    {
-        // �������� TargetRotation Physics Handle
-        FRotator PhysicsHandleTargetRotation;
-        FVector t;
-        PhysicsHandle->GetTargetLocationAndRotation(t, PhysicsHandleTargetRotation);
-
-        // ������� TargetRotation Physics Handle �� �����
-        GEngine->AddOnScreenDebugMessage(
-            -1, // ���������� ID ���������, -1 ��������, ��� ��������� �������� ����� �����
-            0,  // ����� ����������� ���������
-            FColor::Green, // ���� ������
-            FString::Printf(TEXT("PhysicsHandle Target Rotation: Pitch: %f, Yaw: %f, Roll: %f"),
-                            PhysicsHandleTargetRotation.Pitch, PhysicsHandleTargetRotation.Yaw,
-                            PhysicsHandleTargetRotation.Roll));
-    }*/
-
-    // Inventory debug info
-    /*
-    if (Inventory)
-    {
-        GEngine->AddOnScreenDebugMessage(6, 0.0f, FColor::Cyan,
-                                         "Items in inventory: " + FString::FromInt(Inventory->GetInventoryData().Num()),
-                                         true);
-
-        FString items;
-
-        for (auto data : GetInventoryComponent()->GetInventoryData())
-        {
-            items.Append(data->GetItemName().ToString() + "\n");
-        }
-
-        GEngine->AddOnScreenDebugMessage(7, 0.0f, FColor::Yellow, "Items: \n" + items, true);
-    }
-    */
 }
 
 /********************* INTERACTIONS *********************/
@@ -346,6 +212,7 @@ bool ASKPlayerCharacter::TraceFromCamera(FHitResult &HitResult, const float Trac
     if (ComponentToIgnore)
     {
         TraceParams.AddIgnoredComponent(ComponentToIgnore);
+        TraceParams.AddIgnoredActor(this);
     }
 
     return GetWorld()->LineTraceSingleByChannel(HitResult, TraceStart, TracecEnd, ECollisionChannel::ECC_Visibility,

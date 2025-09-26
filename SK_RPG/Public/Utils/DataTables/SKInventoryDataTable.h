@@ -17,4 +17,7 @@ struct SIRKNIGHT_API FSKInventoryDataTable : public FTableRowBase
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     int32 Amount = 1;
+
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    bool MainWeaponSlot = false;
 };

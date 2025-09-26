@@ -3,6 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
+#include "GameplayTagContainer.h"
 #include "Kismet/BlueprintFunctionLibrary.h"
 
 #include "SKFunctionLibrary.generated.h"
@@ -15,8 +16,13 @@ class SIRKNIGHT_API USKFunctionLibrary : public UBlueprintFunctionLibrary
     GENERATED_BODY()
 
   public:
-    UFUNCTION(BlueprintPure, Category = "SK Statics library | Animation Utils")
-    static FName GetMontageSectionNameByIndex(const UAnimMontage *Montage, const int32 Index);
+    // clang-format off
+    UFUNCTION(BlueprintPure, Category = "SK Functions library | Utils",
+              meta = (ToolTip = "Returns currently looked at actor from a provided view direction. Distance value of 0 and below will be ignored, as well as empty tag container"))
+   // clang-format on    
+static AActor *GetLookedAtActor(const TArray<AActor *> &Actors, const FVector &ViewDirection, const FVector &ViewPoint, const float Distance = 0.f,
+    const float DotProductThreshold = 0.9f,
+    const FGameplayTagContainer TagsToIngore = FGameplayTagContainer());
 
     static FHitResult TraceToBoundingBox(const UWorld *World, const FVector TraceStartPoint, const AActor *OtherActor);
 };

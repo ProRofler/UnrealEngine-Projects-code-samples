@@ -32,7 +32,7 @@ class SIRKNIGHT_API USKAbilitySystemComponent : public UAbilitySystemComponent
                              FActiveGameplayEffectHandle ActiveEffectHandle);
 
     UFUNCTION(BlueprintCallable, Category = "TagWatcher")
-    void WatchTag(FGameplayTag TagToWatch);
+    void WatchTags(FGameplayTagContainer TagsToWatch);
 
     UPROPERTY(BlueprintAssignable, Category = "TagWatcher")
     FGameplayTagChangedSignature OnTagChanged;

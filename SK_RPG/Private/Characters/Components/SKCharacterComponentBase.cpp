@@ -22,8 +22,11 @@ void USKCharacterComponentBase::InitializeSKCharacterOwner()
     {
         SKCharacter = Cast<ASKBaseCharacter>(GetOwner());
 
-        UE_LOGFMT(LogSKCharacterComponent, Display, "{1} owner init success, new owner is {2}", ("1", GetName()),
-                  ("2", SKCharacter->GetName()));
+        if (bEnableLogging)
+        {
+            UE_LOGFMT(LogSKCharacterComponent, Display, "{1} owner init success, new owner is {2}", ("1", GetName()),
+                      ("2", SKCharacter->GetName()));
+        }
 
         return;
     }

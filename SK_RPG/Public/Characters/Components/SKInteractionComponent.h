@@ -38,9 +38,6 @@ class SIRKNIGHT_API USKInteractionComponent : public USKCharacterComponentBase
     UPROPERTY(BlueprintReadWrite, EditDefaultsOnly, Category = "SK Interaction component settings")
     float GrabDistance = 150.0f;
 
-    UFUNCTION(BlueprintPure, Category = "SK Interaction component")
-    AActor *GetLookedAtActor(const TArray<AActor *> &Actors, const double Threshold) const;
-
   private:
     UFUNCTION()
     void OnBeginOverlap(UPrimitiveComponent *OverlappedComponent, AActor *OtherActor, UPrimitiveComponent *OtherComp,

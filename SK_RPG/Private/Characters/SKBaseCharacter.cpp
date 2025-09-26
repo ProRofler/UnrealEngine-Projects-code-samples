@@ -5,11 +5,8 @@
 #include "AbilitySystemBlueprintLibrary.h"
 #include "GameplayEffect.h"
 
-#include "Async/Async.h"
-
 #include "Characters/Components/SKCharacterMovementComponent.h"
 #include "Characters/Components/SKInventoryComponent.h"
-#include "Characters/Components/SKStateMachineComponent.h"
 #include "Characters/Components/SKWeaponComponent.h"
 
 #include "Components/CapsuleComponent.h"
@@ -17,7 +14,6 @@
 #include "Core/SKLogCategories.h"
 #include "Logging/StructuredLog.h"
 
-#include "Gameplay/GAS/Abilities/SKAbilityBase.h"
 #include "Gameplay/GAS/SKAbilitySystemComponent.h"
 #include "Gameplay/GAS/SKAttributeSetSkills.h"
 #include "Gameplay/GAS/SKNativeGameplayTags.h"
@@ -358,9 +354,9 @@ void ASKBaseCharacter::OnCapsuleBeginOverlap(UPrimitiveComponent *OverlappedComp
                                              UPrimitiveComponent *OtherComp, int32 OtherBodyIndex, bool bFromSweep,
                                              const FHitResult &SweepResult)
 {
-    if (IsPlayerControlled()) return;
+    if (IsPlayerControlled() || !OtherComp || !OtherActor->Implements<USKInterfaceCollectible>()) return;
 
-    if (OtherComp && OtherComp->GetOwner() && OtherComp->GetOwner()->GetVelocity().Size() > 650.f)
+    if (OtherComp->GetOwner() && OtherComp->GetOwner()->GetVelocity().Size() > 650.f)
     {
         FGameplayEventData payload;
         payload.Instigator = OtherComp->GetOwner();

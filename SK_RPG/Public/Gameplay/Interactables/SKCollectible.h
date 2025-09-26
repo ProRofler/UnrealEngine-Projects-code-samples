@@ -2,12 +2,12 @@
 
 #pragma once
 
+#include "CoreMinimal.h"
+
 #include "Core/Interface/SKInterfaceCollectible.h"
 #include "Core/SKCoreTypes.h"
 
-#include "CoreMinimal.h"
 #include "Gameplay/Interactables/SKInteractableBase.h"
-#include "SignificanceManager.h"
 
 #include "SKCollectible.generated.h"
 
@@ -19,10 +19,12 @@ class SIRKNIGHT_API ASKCollectible : public ASKInteractableBase, public ISKInter
   public:
     ASKCollectible();
 
-    UFUNCTION(BlueprintCallable)
+    UFUNCTION(BlueprintPure)
     const FORCEINLINE int32 &GetItemQuantity() const { return Quantity; }
 
-    UFUNCTION(BlueprintCallable)
+    FORCEINLINE void SetItemQuantity(const int32 ItemQuantity) { Quantity = ItemQuantity; }
+
+    UFUNCTION(BlueprintPure)
     const FORCEINLINE ECollectibleType GetCollectibleType() const { return CollectibleType; }
 
     UFUNCTION(BlueprintCallable)

@@ -21,13 +21,6 @@ void USKAbilityBaseCombat::ActivateAbility(const FGameplayAbilitySpecHandle Hand
     Super::ActivateAbility(Handle, ActorInfo, ActivationInfo, TriggerEventData);
 
     SetupWeaponTrace();
-
-    if (!DamageEffect)
-    {
-        UE_LOGFMT(LogSKAbilitySystem, Error,
-                  "Actor's: {1} ability: {2} has no damage effect selected, attacks will be blank",
-                  ("1", GetSKOwnerCharacter()->GetName()), ("2", GetName()));
-    }
 }
 
 void USKAbilityBaseCombat::EndAbility(const FGameplayAbilitySpecHandle Handle,
@@ -55,15 +48,16 @@ void USKAbilityBaseCombat::SetupWeaponTrace()
         this, FSKGameplayTags::Get().Event_Combat_Hit, nullptr, false, true);
 
     if (traceStartTask && traceEndTask && traceHitTask)
-    {
-        traceStartTask->EventReceived.AddDynamic(this, &USKAbilityBaseCombat::OnGameplayEventTrace);
-        traceEndTask->EventReceived.AddDynamic(this, &USKAbilityBaseCombat::OnGameplayEventTrace);
-        traceHitTask->EventReceived.AddDynamic(this, &USKAbilityBaseCombat::OnGameplayEventHit);
+        if (traceStartTask && traceEndTask)
+        {
+            traceStartTask->EventReceived.AddDynamic(this, &USKAbilityBaseCombat::OnGameplayEventTrace);
+            traceEndTask->EventReceived.AddDynamic(this, &USKAbilityBaseCombat::OnGameplayEventTrace);
+            traceHitTask->EventReceived.AddDynamic(this, &USKAbilityBaseCombat::OnGameplayEventHit);
 
-        traceStartTask->ReadyForActivation();
-        traceEndTask->ReadyForActivation();
-        traceHitTask->ReadyForActivation();
-    }
+            traceStartTask->ReadyForActivation();
+            traceEndTask->ReadyForActivation();
+            traceHitTask->ReadyForActivation();
+        }
 }
 
 void USKAbilityBaseCombat::OnGameplayEventTrace(FGameplayEventData Payload)
@@ -88,38 +82,22 @@ void USKAbilityBaseCombat::OnGameplayEventHit(FGameplayEventData Payload)
 
     weaponComponent->SetIsTracingMelee(false);
 
-    if (DamageEffect && Payload.Target && Payload.Target->Implements<UAbilitySystemInterface>())
+    if (Payload.Target && Payload.Target->Implements<UAbilitySystemInterface>())
     {
         AActor *target = ConstCast(Payload.Target);
         if (!target) return;
-
-        HandleHitStop(.1f);
 
         FGameplayEventData tPayload;
         UAbilitySystemBlueprintLibrary::SendGameplayEventToActor(target, FSKGameplayTags::Get().Event_Combat_Damage,
                                                                  tPayload);
 
-        IAbilitySystemInterface *ASI = Cast<IAbilitySystemInterface>(target);
-        const auto ASC = ASI->GetAbilitySystemComponent();
+        if (DamageEffect)
+        {
+            IAbilitySystemInterface *ASI = Cast<IAbilitySystemInterface>(target);
+            const auto ASC = ASI->GetAbilitySystemComponent();
 
-        FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageEffect, 0, ASC->MakeEffectContext());
-        ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
-    }
-    else
-    {
-        HandleHitStop(.5f);
-    }
-}
-
-void USKAbilityBaseCombat::HandleHitStop(const float Time) const
-{
-    if (GetWorld())
-    {
-        ISKInterfaceCharacter::Execute_SetCombatPhysics(GetSKOwnerCharacter(), true);
-
-        FTimerHandle TimerHandle;
-        GetWorld()->GetTimerManager().SetTimer(
-            TimerHandle, [this]() { ISKInterfaceCharacter::Execute_SetCombatPhysics(GetSKOwnerCharacter(), false); },
-            Time, false);
+            FGameplayEffectSpecHandle SpecHandle = ASC->MakeOutgoingSpec(DamageEffect, 0, ASC->MakeEffectContext());
+            ASC->ApplyGameplayEffectSpecToSelf(*SpecHandle.Data.Get());
+        }
     }
 }

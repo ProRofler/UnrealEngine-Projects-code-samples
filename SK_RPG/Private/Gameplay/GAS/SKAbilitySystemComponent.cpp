@@ -81,10 +81,13 @@ void USKAbilitySystemComponent::HandleEffectApplied(UAbilitySystemComponent *Abi
     EffectAssetTags.Broadcast(TagContainer);
 }
 
-void USKAbilitySystemComponent::WatchTag(FGameplayTag TagToWatch)
+void USKAbilitySystemComponent::WatchTags(FGameplayTagContainer TagsToWatch)
 {
-    RegisterGameplayTagEvent(TagToWatch, EGameplayTagEventType::NewOrRemoved)
-        .AddUObject(this, &USKAbilitySystemComponent::HandleTagChanged);
+    for (int i = 0; i < TagsToWatch.Num(); ++i)
+    {
+        RegisterGameplayTagEvent(TagsToWatch.GetByIndex(i), EGameplayTagEventType::NewOrRemoved)
+            .AddUObject(this, &USKAbilitySystemComponent::HandleTagChanged);
+    }
 }
 
 void USKAbilitySystemComponent::HandleTagChanged(const FGameplayTag Tag, int32 NewCount)

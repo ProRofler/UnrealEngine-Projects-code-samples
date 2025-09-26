@@ -10,23 +10,18 @@
 #include "Components/CapsuleComponent.h"
 #include "Core/Interface/SKInterfaceCollectible.h"
 #include "Core/Interface/SKInterfaceInteractable.h"
-
 #include "Core/Interface/SKInterfaceCharacter.h"
 
 #include "Core/SKLogCategories.h"
 #include "Logging/StructuredLog.h"
 
-#include "Gameplay/GAS/SKNativeGameplayTags.h"
-
 #include "Kismet/KismetMathLibrary.h"
 
 #include "AbilitySystemComponent.h"
-#include "AbilitySystemInterface.h"
 #include "Camera/CameraComponent.h"
 
+#include "Gameplay/GAS/SKNativeGameplayTags.h"
 #include "Gameplay/GAS/SKAbilitySystemComponent.h"
-
-#include "AbilitySystemInterface.h"
 
 #include "Utils/Libraries/SKFunctionLibrary.h"
 
@@ -121,6 +116,7 @@ void USKInteractionComponent::HandleVicinityChanged()
     }
 }
 
+// big ass method. refactor?
 void USKInteractionComponent::AsyncInteractionHandle()
 {
 #if !UE_BUILD_SHIPPING
@@ -258,44 +254,4 @@ void USKInteractionComponent::Interact()
     }
 
     ISKInterfaceInteractable::Execute_OnInteraction(InteractionTarget.Get(), GetOwner());
-}
-
-// not used right now
-AActor *USKInteractionComponent::GetLookedAtActor(const TArray<AActor *> &Actors, const double Threshold = 0.0f) const
-{
-#if !UE_BUILD_SHIPPING
-    TRACE_CPUPROFILER_EVENT_SCOPE_STR("USKInteractionComponent::GetLookedAtActor");
-#endif
-
-    double BestDotProduct = -1.0f;
-    AActor *Item = nullptr;
-
-    for (const auto &Actor : Actors)
-    {
-
-        if (const auto Character = Cast<ASKBaseCharacter>(Actor))
-        {
-            const auto ASC = Character->GetAbilitySystemComponent();
-            if (ASC &&
-                ASC->HasAnyMatchingGameplayTags(FSKGameplayTags::Get().Character_State_Dead.GetSingleTagContainer()))
-                continue;
-        }
-
-        // calcuate dot product
-        const auto PC = Cast<ASKPlayerCharacter>(GetOwner());
-
-        const auto DotProduct =
-            FVector::DotProduct(PC->PlayerCamera->GetForwardVector(),
-                                UKismetMathLibrary::GetDirectionUnitVector(PC->PlayerCamera->GetComponentLocation(),
-                                                                           Actor->GetActorLocation()));
-
-        if (DotProduct >= BestDotProduct)
-            BestDotProduct = DotProduct;
-        else
-            continue;
-
-        Item = Actor;
-    }
-
-    return BestDotProduct < Threshold ? nullptr : Item;
 }

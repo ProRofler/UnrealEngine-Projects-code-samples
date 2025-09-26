@@ -108,7 +108,11 @@ void ASKInteractableBase::SetupOverlayMaterial()
                 this, Material, *GetName().Append("_OverlayMaterialInstance"));
 
             BaseMesh->SetOverlayMaterial(OverlayDynMat);
-            UE_LOG(LogTemp, Display, TEXT("Overlay material set: %s"), *Material->GetName());
+
+            if (bEnableLogging)
+            {
+                UE_LOG(LogTemp, Display, TEXT("Overlay material set: %s"), *Material->GetName());
+            }
         }));
 }
 

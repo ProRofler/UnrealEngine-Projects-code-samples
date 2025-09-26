@@ -97,7 +97,7 @@ void USKInventoryComponent::AddToInventory(AActor *PickedItem)
 {
     if (!PickedItem) return;
 
-    auto itemData = CreateInventoryObjectDataItem(PickedItem);
+    USKInventoryObjectData *itemData = CreateInventoryObjectDataItem(PickedItem);
 
     if (!itemData)
     {
@@ -109,13 +109,11 @@ void USKInventoryComponent::AddToInventory(AActor *PickedItem)
 
     if (auto item = FindByObjectData(itemData))
     {
-        UE_LOG(LogTemp, Display, TEXT("Found in inventory"));
         item->ChangeItemQuantity(itemData->GetItemQuantity());
     }
     else
     {
         InventoryData.Add(itemData);
-        UE_LOG(LogTemp, Display, TEXT("Not found in inventory"));
     }
 
     SortInventory();
@@ -130,8 +128,11 @@ void USKInventoryComponent::AddToInventory(AActor *PickedItem)
         return;
     }
 
-    UE_LOGFMT(LogSKInteractions, Display, "Actor: {0} picked up item: \"{1}\", of class: {2}",
-              GetSKOwnerCharacter()->GetName(), itemData->GetItemName(), itemData->GetItemClass()->GetName());
+    if (bEnableLogging)
+    {
+        UE_LOGFMT(LogSKInteractions, Display, "Actor: {0} picked up item: \"{1}\", of class: {2}",
+                  GetSKOwnerCharacter()->GetName(), itemData->GetItemName(), itemData->GetItemClass()->GetName());
+    }
 }
 
 bool USKInventoryComponent::RemoveFromInventory(USKInventoryObjectData *ItemToRemove, const int32 QuantityToRemove)
@@ -196,8 +197,6 @@ USKInventoryObjectData *USKInventoryComponent::FindByObjectData(USKInventoryObje
 
 void USKInventoryComponent::SortInventory()
 {
-    UE_LOG(LogTemp, Display, TEXT("Attempting to sort the inventory"));
-
     InventoryData.Sort([](const TObjectPtr<USKInventoryObjectData> &A, const TObjectPtr<USKInventoryObjectData> &B) {
         if (A && B)
         {
@@ -221,8 +220,15 @@ void USKInventoryComponent::AddToInventoryFromDataTable(const UDataTable *DT)
     {
         if (Row)
         {
-            auto item = NewObject<AActor>(GetOwner(), Row->ItemClass);
+            auto item = NewObject<ASKCollectible>(GetOwner(), Row->ItemClass);
+            Row->Amount > 0 ? item->SetItemQuantity(Row->Amount) : item->SetItemQuantity(1);
+
             AddToInventory(item);
+
+            if (Row->MainWeaponSlot && !MainWeaponSlot && (item->GetCollectibleType() == ECollectibleType::Weapon))
+            {
+                EquipWeapon(CreateInventoryObjectDataItem(item));
+            }
             item->Destroy();
         }
     }

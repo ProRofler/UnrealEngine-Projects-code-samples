@@ -7,9 +7,6 @@ ASKEquippableBase::ASKEquippableBase()
     PrimaryActorTick.bCanEverTick = false;
 
     BaseMesh = CreateDefaultSubobject<UStaticMeshComponent>("Weapon mesh");
+    BaseMesh->SetupAttachment(RootComponent);
     SetRootComponent(BaseMesh);
 }
-
-UStaticMesh *ASKEquippableBase::GetStaticMesh() const { return BaseMesh->GetStaticMesh(); }
-
-void ASKEquippableBase::BeginPlay() { Super::BeginPlay(); }

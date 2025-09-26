@@ -8,7 +8,7 @@ void ASKEquippableSword::BeginPlay()
 {
     Super::BeginPlay();
 
-    SocketsSetup();
+    // SocketsSetup();
 }
 
 void ASKEquippableSword::SocketsSetup()
@@ -20,7 +20,7 @@ void ASKEquippableSword::SocketsSetup()
     }
 
     ensureMsgf(TraceStartSocket && TraceEndSocket,
-               TEXT("Socket(s) are null. Either they have the wrong names or they weren't manually set in BP"));
+               TEXT("Socket(s) are null. Make sure they're set in StaticMesh and have the correct names"));
 }
 
 void ASKEquippableSword::HitDetect(FHitResult &HitResult)
@@ -91,4 +91,10 @@ void ASKEquippableSword::ResetTraceStartEnd()
 {
     PreviousTraceStart = FVector::Zero();
     PreviousTraceEnd = FVector::Zero();
+}
+
+void ASKEquippableSword::InitializeMeleeWeapon(UStaticMesh *MeleeWeaponMesh)
+{
+    BaseMesh->SetStaticMesh(MeleeWeaponMesh);
+    SocketsSetup();
 }

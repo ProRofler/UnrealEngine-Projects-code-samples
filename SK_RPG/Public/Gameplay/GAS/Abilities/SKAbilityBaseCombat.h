@@ -14,7 +14,9 @@ class SIRKNIGHT_API USKAbilityBaseCombat : public USKAbilityBase
     GENERATED_BODY()
 
   public:
-    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "SK Damage")
+    // Damage effect is optional
+    UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "SK Damage",
+              meta = (ToolTip = "Optional Gameplay Effect. If not set, it will be ignored."))
     TSubclassOf<UGameplayEffect> DamageEffect;
 
   protected:
@@ -33,6 +35,4 @@ class SIRKNIGHT_API USKAbilityBaseCombat : public USKAbilityBase
     void OnGameplayEventTrace(FGameplayEventData Payload);
     UFUNCTION()
     void OnGameplayEventHit(FGameplayEventData Payload);
-
-    void HandleHitStop(const float Time) const;
 };
