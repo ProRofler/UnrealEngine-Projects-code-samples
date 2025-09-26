@@ -12,7 +12,7 @@ It does \*\*not\*\* contain full projects, assets, or build files — only the c
 
 
 
-\## Purpose:
+\## 📌 Purpose
 
 \- Maintain a clean, versioned archive of gameplay systems, utilities, and patterns.  
 
@@ -26,7 +26,7 @@ It does \*\*not\*\* contain full projects, assets, or build files — only the c
 
 
 
-\## Contents:
+\## 📂 Contents
 
 The repository may include:
 
@@ -64,7 +64,7 @@ The repository may include:
 
 
 
-\## Usage:
+\## 🛠 Usage
 
 \- Browse files to explore implementation details.  
 
@@ -78,7 +78,7 @@ The repository may include:
 
 
 
-\## Notes:
+\## 📝 Notes
 
 \- Code is \*\*periodically updated\*\* by syncing from multiple private repos.  
 
